@@ -29,10 +29,14 @@
         "label": "home",
         "title": "Sealoo",
         "url": "home.html",
-        "width": 960,
-        "height": 640,
+        "width": 720,
+        "height": 520,
+        "resizable": false,
+        "decorations": false,
+        "transparent": true,
         "visible": false,
-        "center": true
+        "center": true,
+        "shadow": true
       }
     ],
     "security": {

@@ -23,6 +23,7 @@ import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { bindDragBones, resetDragCamera } from "./movement/drag";
 import { setClips, update as updateMotion } from "./movement/router";
+import { isSetupComplete } from "./prefs";
 
 const MODEL_URL = "/models/pet.glb";
 const TURN_SENSITIVITY = 0.01;
@@ -151,6 +152,11 @@ async function openHome() {
   await home.unminimize();
   await home.show();
   await home.setFocus();
+}
+
+async function maybeOpenFirstRun() {
+  if (await isSetupComplete()) return;
+  await openHome();
 }
 
 function fitCameraToObject(object: Object3D) {
@@ -359,4 +365,5 @@ window.addEventListener("resize", resize);
 resize();
 void appWindow.setIgnoreCursorEvents(true).catch(() => {});
 void loadPet();
+void maybeOpenFirstRun();
 frame();

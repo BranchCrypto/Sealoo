@@ -4,16 +4,105 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sealoo</title>
-    <style>
-      html,
-      body {
-        margin: 0;
-        width: 100%;
-        height: 100%;
-        background: #fff;
-      }
-    </style>
+    <link rel="stylesheet" href="/src/home.css" />
     <script type="module" src="/src/home.ts" defer></script>
   </head>
-  <body></body>
+  <body>
+    <div class="shell">
+      <header class="chrome" data-tauri-drag-region>
+        <span class="chrome-title">Sealoo</span>
+        <button type="button" class="chrome-close" id="win-close" aria-label="关闭">
+          ×
+        </button>
+      </header>
+
+      <main class="app" id="app">
+        <section id="view-welcome" class="view" hidden>
+          <p class="brand">Sealoo</p>
+          <p class="lead">
+            一只会帮你干活的海豹桌宠。先花一分钟完成初次设置，认识它的精力与鱼桶。
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-primary" data-go="name">开始设置</button>
+          </div>
+        </section>
+
+        <section id="view-name" class="view" hidden>
+          <div class="steps" aria-hidden="true">
+            <span class="step-dot" aria-current="step"></span>
+            <span class="step-dot"></span>
+            <span class="step-dot"></span>
+          </div>
+          <p class="brand brand-sm">给你的海豹起名</p>
+          <p class="lead">之后会显示在主界面里。随时可以改。</p>
+          <div class="field">
+            <label for="pet-name">名字</label>
+            <input
+              id="pet-name"
+              type="text"
+              maxlength="24"
+              placeholder="例如：小海豹"
+              autocomplete="off"
+              spellcheck="false"
+            />
+            <p class="hint">留空则使用默认名 Sealoo。</p>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" data-go="welcome">上一步</button>
+            <button type="button" class="btn btn-primary" data-go="about">下一步</button>
+          </div>
+        </section>
+
+        <section id="view-about" class="view" hidden>
+          <div class="steps" aria-hidden="true">
+            <span class="step-dot"></span>
+            <span class="step-dot" aria-current="step"></span>
+            <span class="step-dot"></span>
+          </div>
+          <p class="brand brand-sm">精力与鱼桶</p>
+          <p class="lead">干活会消耗精力；鱼桶就是补给来源。</p>
+          <div class="cards">
+            <article class="card">
+              <h3>精力</h3>
+              <p>Token 用量映射为精力。耗尽后需要喂鱼才能继续工作。</p>
+            </article>
+            <article class="card">
+              <h3>鱼桶</h3>
+              <p>鱼桶即链上钱包。买鱼与喂鱼都需要你确认；精力不足时会暂停工作并提醒你喂鱼。</p>
+            </article>
+          </div>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" data-go="name">上一步</button>
+            <button type="button" class="btn btn-primary" data-go="done">下一步</button>
+          </div>
+        </section>
+
+        <section id="view-done" class="view" hidden>
+          <div class="steps" aria-hidden="true">
+            <span class="step-dot"></span>
+            <span class="step-dot"></span>
+            <span class="step-dot" aria-current="step"></span>
+          </div>
+          <p class="brand brand-sm">准备好了</p>
+          <p class="lead">
+            <strong id="done-name">Sealoo</strong> 已经在桌面上等你。右键它可以打开菜单。
+          </p>
+          <div class="actions">
+            <button type="button" class="btn btn-ghost" data-go="about">上一步</button>
+            <button type="button" class="btn btn-primary" id="finish-setup">开始使用</button>
+          </div>
+        </section>
+
+        <section id="view-home" class="view view-home" hidden>
+          <div class="home-head">
+            <h1 id="home-title">Sealoo</h1>
+            <p>主界面 · 更多能力正在路上</p>
+          </div>
+          <div class="home-panel">
+            <p>右键桌宠可打开菜单。消费、设置等入口会陆续接上。</p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
 </html>

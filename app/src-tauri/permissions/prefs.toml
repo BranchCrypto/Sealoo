@@ -1,0 +1,9 @@
+[[permission]]
+identifier = "allow-get-prefs"
+description = "Allows reading Sealoo prefs"
+commands.allow = ["get_prefs"]
+
+[[permission]]
+identifier = "allow-set-prefs"
+description = "Allows writing Sealoo prefs"
+commands.allow = ["set_prefs"]
