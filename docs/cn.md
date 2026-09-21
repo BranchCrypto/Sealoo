@@ -235,7 +235,7 @@ Sealoo 执行任务时使用简易 Credit（积分/额度）。
 95 Credit
 ```
 
-链上会同步记录对应的 Credit 消耗事件。
+任务开始锁定预估、终态按实际结算；链上同步 CreditLocked / CreditSettled 事件（含 TaskId）。
 
 ---
 
@@ -379,7 +379,7 @@ Sealoo #123
 ```text
 Credit 余额
       ↓
-简易消耗
+预付锁定 + 终态结算
       ↓
 Avalanche 链上 Event
 ```
@@ -424,17 +424,28 @@ metadata
 
 ```solidity
 balanceOf()
-consume()
+lockedOf()
 purchase()
+lock(taskId, estimate)
+settle(taskId, actual)
 ```
 
 核心数据结构：
 
 ```text
-credits[address]
+available[address]
+locked[address]
 taskId
-consumption
 ```
+
+核心事件：
+
+```text
+CreditLocked(taskId, estimate, owner)
+CreditSettled(taskId, actual, refund, owner)
+```
+
+结算约定：预付费模型——任务开始 `lock`，任意终态 `settle`；不按工具步骤分次上链。详见 [预付费方案](./prepaid-credit.cn.md)。
 
 ---
 
@@ -445,8 +456,8 @@ consumption
 ```text
 Sealoo 所有权 (Ownership)
 钱包连接 (Wallet)
-Credit 余额 (Credit Balance)
-Credit 消耗记录 (Credit Consumption)
+Credit 余额 (available / locked)
+Credit 预付锁定与终态结算 (lock + settle)
 交易事件 (Transaction Events)
 ```
 
@@ -458,6 +469,8 @@ AI 模型计算
 记忆存储 (Memory)
 网络搜索
 工具执行 (Tool Execution)
+任务 Credit 预估：客户端 Token 估算与换算
+工具调用计量与 actual Token 累计
 本地文件生成
 UI 渲染
 宠物动画
@@ -468,6 +481,8 @@ UI 渲染
 > **AI 计算保留在链下。**
 >
 > **所有权与价值锚定在 Avalanche 链上。**
+>
+> **预付费：客户端估 Token；开始锁定 Credit，终态按实际 Token 换算结算。**
 
 ---
 
@@ -500,7 +515,11 @@ Sealoo
 
 ## 12. Credit 机制
 
-Credit 是 Sealoo 的轻量级使用额度。
+Credit 是 Sealoo 的轻量级使用额度，采用**预付费**模型。
+
+**Token 用量由客户端估算与累计**，再换算为 Credit 进行锁定与结算。
+
+详细方案见：[Credit 预付费方案](./prepaid-credit.cn.md)
 
 示例：
 
@@ -508,7 +527,32 @@ Credit 是 Sealoo 的轻量级使用额度。
 初始额度：100 Credit
 ```
 
-单次任务消耗：
+### 预付费：客户端估 Token → 锁定 Credit → 终态结算
+
+一个 Task 内的搜索、阅读、总结、写入均在链下执行。客户端在开任务前估算 Token，换算为 `estimateCredit` 并锁定；运行中累计实际 Token；任意终态按 `actualCredit` 结算，未用部分退回。
+
+```text
+用户创建任务
+  ↓
+[客户端] estimateTokens → estimateCredit（例：4800 Token → 5 Credit）
+  ↓
+[链上] lock(taskId, estimateCredit=5)
+  ↓
+[链下] Agent 执行；[客户端] 累计 actualTokens
+  ↓
+[客户端] actualTokens → actualCredit
+  ↓
+[链上] settle(taskId, actualCredit)
+```
+
+费率：
+
+```text
+TOKENS_PER_CREDIT = 1000
+estimateCredit = ceil(estimateTokens / 1000)
+```
+
+单次任务消耗明细（链下累计，用于得出 actual）：
 
 ```text
 搜索         1
@@ -519,44 +563,50 @@ Credit 是 Sealoo 的轻量级使用额度。
 总计         5 Credit
 ```
 
-最终状态：
+最终状态（estimate=5, actual=5）：
 
 ```text
 100 → 95
 ```
 
+| 环节 | 位置 | 是否上链 |
+|------|------|----------|
+| Token 用量估算 / 累计 | 客户端 | 否 |
+| Token → Credit 换算 | 客户端 | 否 |
+| 工具调用日志 | 链下 | 否 |
+| 锁定预估 lock | 链上 | 是（开始 1 次） |
+| 终态结算 settle | 链上 | 是（结束 1 次） |
+| Credit 余额真相源 | Avalanche 合约 | 是 |
+
+> Demo 说明：Token 只在客户端计量；链上只锁/结 Credit。单任务 Credit 相关链上交互为 lock + settle。中途取消同样按已用 Token 结算，防止白嫖。
+
+### Credit 不足策略
+
+客户端先估 Token 并换算 Credit；`available < estimateCredit` 则**不 lock、不执行**。
+
+```text
+收到任务
+  ↓
+[客户端] estimateTokenUsage → estimateCredit
+  ↓
+available ≥ estimateCredit ?
+  ├─ No  → 拒绝执行 + Need Credit 提示（不调用工具）
+  └─ Yes → lock → 执行并累计 Token → settle(actualCredit)
+```
+
+| 场景 | Credit | 预估消耗 | 行为 |
+|------|--------|----------|------|
+| 充足 | 100 | 5 | lock → 执行 → settle |
+| 不足 | 3 | 5 | **拒绝执行**；提示补充 Credit |
+| 边界 | 5 | 5 | 允许；settle 后 available 为 0 |
+
+预估口径：由客户端按提示词长度、规划工具轮次、预期输出等估算 Token，再换算 Credit。
+
 所有 Credit 的最终状态均以 Avalanche 合约记录为准。
 
 ---
 
-## 13. 防篡改演示 (Tamper Demo)
-
-Sealoo 本地界面显示：
-
-```text
-Credit: 95
-```
-
-恶意修改本地前端状态：
-
-```text
-Credit: 9999
-```
-
-系统重新从 Avalanche 合约读取数据：
-
-```text
-真实 Credit: 95
-```
-
-Demo 演示核心理念：
-
-> **前端 UI 状态可以被任意篡改，
-> 但 Avalanche 链上状态不可动摇。**
-
----
-
-## 14. 所有权演示 (Ownership Demo)
+## 13. 所有权演示 (Ownership Demo)
 
 连接钱包：
 
@@ -582,44 +632,83 @@ ownerOf(123)
 
 ---
 
-## 15. Credit 消耗演示 (Credit Demo)
+## 14. Credit 消耗演示 (Credit Demo)
 
 初始状态：
 
 ```text
-Credit: 100
+Credit: 100（available）
 ```
 
 执行任务：
 
 ```text
 “研究 Avalanche”
+客户端估算：estimateTokens ≈ 4800 → estimateCredit = 5
 ```
 
-消耗：
+预付锁定 → 执行 → 终态结算：
 
 ```text
-5 Credit
-```
-
-链上更新：
-
-```text
-100 → 95
+lock(#001, 5)     100 → available 95 / locked 5
+settle(#001, 5)   locked 0 / available 95
 ```
 
 Explorer 链上事件日志：
 
 ```text
-CreditConsumed
+CreditLocked
 TaskId: #001
-Amount: 5
+Estimate: 5
 Owner: 0xABC...123
+
+CreditSettled
+TaskId: #001
+Actual: 5
+Refund: 0
+Owner: 0xABC...123
+```
+
+### 用户验证路径
+
+固定 TaskId 与链上 lock / settle Event 的对应关系：
+
+```text
+Task #1
+  ↓ Agent 日志：TaskId=#001, estimateTokens=4800, actualTokens=4800, Credit 5→5
+  ↓ 本地 UI：预估 5 · 实际 5（100 → 95）
+  ↓ 链上：lock(#001, 5) → settle(#001, 5)
+  ↓ Event：CreditLocked + CreditSettled
+  ↓ Explorer：[ View on Avalanche ] → 用户公开验证
+```
+
+| 字段 | 值 | 用途 |
+|------|-----|------|
+| TaskId | `#001` | Agent 日志与 Event 主键 |
+| Estimate / Actual | `5` / `5` | 与本地展示一致 |
+| Owner | 当前连接钱包 | 所有权关联 |
+| Tx Hash | lock / settle 交易哈希 | Explorer 跳转 |
+
+任务完成后 UI 展示：
+
+```text
+Task #001 · 预估 5 · 实际 5 · 退回 0
+[ 查看链上记录 ]
+```
+
+### Credit 不足演示
+
+```text
+Credit: 3
+任务: “帮我研究 Avalanche 并生成报告”
+预估: 5
+结果: 不 lock、不执行
+Sealoo: “需要补充一点 Credit 才能继续工作哦。”
 ```
 
 ---
 
-## 16. 桌面 UI 界面设计
+## 15. 桌面 UI 界面设计
 
 ## 首页 (Home)
 
@@ -654,6 +743,9 @@ Owner: 0xABC...123
 │ 搜索中...               │
 │ 阅读中...               │
 │ 完成！                  │
+│                         │
+│ Task #001 · -5 Credit   │
+│ [ 查看链上记录 ]        │
 └─────────────────────────┘
 ```
 
@@ -661,22 +753,43 @@ Owner: 0xABC...123
 
 ## 钱包界面 (Wallet)
 
+本地显示与链上真实状态需可区分。钱包界面展示 Network、Last synced 与交易状态。
+
 ```text
-┌─────────────────────────┐
-│ Avalanche Wallet        │
-│                         │
-│ 0xABC...123             │
-│                         │
-│ AVAX      2.31          │
-│ Credit    95            │
-│                         │
-│ [ 在 Explorer 中查看 ]  │
-└─────────────────────────┘
+┌─────────────────────────────┐
+│ Avalanche Wallet            │
+│ Network: Avalanche Fuji     │
+│                             │
+│ 0xABC...123                 │
+│                             │
+│ AVAX        2.31            │
+│ Credit      95              │
+│                             │
+│ Last synced: 2026-09-21     │
+│              16:08:12       │
+│                             │
+│ Status: Confirmed ✓         │
+│                             │
+│ [ 在 Explorer 中查看 ]      │
+│ [ 刷新 ]                    │
+└─────────────────────────────┘
 ```
+
+交易状态：
+
+| 状态 | UI 文案 | 含义 |
+|------|---------|------|
+| idle | Confirmed ✓ | 无进行中交易 |
+| awaiting_wallet | Waiting for wallet confirmation... | 已请求、待用户签名 |
+| pending | Transaction pending... | 已广播、待出块 |
+| confirmed | Confirmed ✓ | 收据确认，本地已用链上值覆盖 |
+| failed | Failed — tap to retry | 失败或用户拒绝 |
+
+本地 Credit 为缓存；`Last synced` 与 `Confirmed` 标明与链上一致性。
 
 ---
 
-## 17. Sealoo 人设与性格
+## 16. Sealoo 人设与性格
 
 Sealoo 的人设保持简单、友好与轻量化。
 
@@ -703,6 +816,8 @@ Sealoo 的人设保持简单、友好与轻量化。
 
 ### 额度不足 (Need Credit)
 
+在任务开始前的 Credit 预检失败时触发（尚未调用工具）：
+
 ```text
 🦭
 “需要补充一点 Credit 才能继续工作哦。”
@@ -717,7 +832,7 @@ Sealoo 的人设保持简单、友好与轻量化。
 
 ---
 
-## 18. Hackathon 核心 Demo 剧本
+## 17. Hackathon 核心 Demo 剧本
 
 ## 场景 1
 
@@ -735,7 +850,7 @@ Sealoo 的人设保持简单、友好与轻量化。
 
 > “帮我研究 Avalanche，并生成一份 Markdown 报告。”
 
-Sealoo 状态切换：
+预检通过（Credit ≥ 预估 5）后，Sealoo 状态切换：
 
 ```text
 Thinking...
@@ -758,14 +873,28 @@ avalanche-report.md
 
 ## 场景 4
 
-显示 Credit 变动：
+显示 Credit 变动（预付 lock + 终态 settle）：
 
 ```text
 Credit
 
-任务前: 100
-消耗:     5
-任务后:  95
+任务前 available: 100
+预估锁定:           5
+实际消耗:           5
+退回:               0
+任务后 available:  95
+TaskId: #001
+```
+
+---
+
+## 场景 4b · Credit 不足
+
+```text
+Credit: 3
+预估: 5
+→ 拒绝执行，不进入工具调用
+→ Need Credit 提示
 ```
 
 ---
@@ -778,7 +907,7 @@ Credit
 View on Avalanche
 ```
 
-向评委展示真实发生的链上交易信息。
+沿 Task #001 验证路径展示：Agent 日志 → lock → settle → Explorer。
 
 ---
 
@@ -787,24 +916,12 @@ View on Avalanche
 打开钱包视图：
 
 ```text
+Network: Avalanche Fuji
 Sealoo #123
 Owner: 0xABC...123
-```
-
----
-
-## 场景 7
-
-在本地篡改 Credit 为：
-
-```text
-9999
-```
-
-重新从 Smart Contract 读取：
-
-```text
-95
+Credit: 95
+Last synced: ...
+Status: Confirmed ✓
 ```
 
 ---
@@ -822,7 +939,7 @@ Owner: 0xABC...123
 
 ---
 
-## 19. MVP 功能清单
+## 18. MVP 功能清单
 
 ### 桌面端 (Desktop)
 
@@ -833,6 +950,8 @@ Owner: 0xABC...123
 - [x] 基础动画交互 (Simple animations)
 
 - [x] 任务状态指示 (Task status)
+
+- [x] 钱包 Network / Last synced / 交易状态展示
 
 ### AI 层
 
@@ -848,6 +967,11 @@ Owner: 0xABC...123
 
 - [x] Markdown 文件生成
 
+- [x] 客户端 Token 用量估算与累计
+- [x] 任务 Credit 换算与余额预检
+
+- [x] 工具调用链下计量与任务消耗汇总
+
 ### Avalanche 链上
 
 - [x] 钱包连接 (Wallet Connection)
@@ -858,11 +982,11 @@ Owner: 0xABC...123
 
 - [x] Credit 余额查询
 
-- [x] Credit 扣减消耗
+- [x] Credit 预付锁定与终态结算（lock + settle）
 
-- [x] 链上 Event 事件抛出
+- [x] 链上 Event 事件抛出（含 TaskId）
 
-- [x] 区块链浏览器跳转链接
+- [x] 区块链浏览器跳转链接（TaskId ↔ Tx 可验证）
 
 ### 安全性 (Security)
 
@@ -872,11 +996,9 @@ Owner: 0xABC...123
 
 - [x] 链上防篡改 Credit 状态
 
-- [x] 本地状态篡改演示
-
 ---
 
-## 20. 技术栈 (Tech Stack)
+## 19. 技术栈 (Tech Stack)
 
 ```text
 Desktop (桌面端)
@@ -902,7 +1024,7 @@ Contracts (智能合约)
 
 ---
 
-## 21. 项目目录结构
+## 20. 项目目录结构
 
 ```text
 sealoo/
@@ -930,7 +1052,7 @@ sealoo/
 
 ---
 
-## 22. 网络部署
+## 21. 网络部署
 
 Hackathon Demo 演示环境：
 
@@ -948,13 +1070,13 @@ Chain ID: 43114
 
 ---
 
-## 23. 未来展望
+## 22. 未来展望
 
 More seal...（更多可爱的海豹与可能性）
 
 ---
 
-## 24. 产品哲学
+## 23. 产品哲学
 
 ```text
 简单的 UI
@@ -972,7 +1094,7 @@ Avalanche
 
 ---
 
-## 25. 终极 Pitch 演讲稿
+## 24. 终极 Pitch 演讲稿
 
 ## Sealoo 🦭
 
@@ -1002,7 +1124,7 @@ Sealoo 让 Avalanche 从一个您偶尔访问的 Web3 网站，变成一个每�
 
 ---
 
-## 26. 最终定义
+## 25. 最终定义
 
 > **Sealoo 既是一只 AI 桌面宠物，也是通往 Avalanche 生态最简单的入口。**
 >

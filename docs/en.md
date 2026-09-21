@@ -223,7 +223,7 @@ Task completed:
 95 Credit
 ```
 
-The corresponding Credit consumption is recorded on-chain.
+After lock + settle, Credit events (with TaskId) are recorded on-chain.
 
 ---
 
@@ -367,7 +367,7 @@ Sealoo #123
 ```text
 Credit Balance
       ↓
-Simple Consumption
+Prepaid lock + settle
       ↓
 Avalanche Event
 ```
@@ -412,17 +412,28 @@ Handles Credit.
 
 ```solidity
 balanceOf()
-consume()
+lockedOf()
 purchase()
+lock(taskId, estimate)
+settle(taskId, actual)
 ```
 
 Core Data:
 
 ```text
-credits[address]
+available[address]
+locked[address]
 taskId
-consumption
 ```
+
+Core Event:
+
+```text
+CreditLocked(taskId, estimate, owner)
+CreditSettled(taskId, actual, refund, owner)
+```
+
+Settlement rule: prepaid — `lock` at start, `settle` on any terminal state. Tool steps are never settled individually. See [Prepaid Plan](./prepaid-credit.en.md).
 
 ---
 
@@ -433,8 +444,8 @@ consumption
 ```text
 Sealoo Ownership
 Wallet
-Credit Balance
-Credit Consumption
+Credit Balance (available / locked)
+Prepaid lock + terminal settle
 Transaction Events
 ```
 
@@ -446,6 +457,8 @@ Conversation
 Memory
 Web Search
 Tool Execution
+Credit estimate: client Token estimate & conversion
+Tool metering & actual Token tally
 Files
 UI
 Animation
@@ -456,6 +469,8 @@ Animation
 > **AI stays off-chain.**
 >
 > **Ownership and value stay on Avalanche.**
+>
+> **Prepaid: client estimates Tokens; lock Credit at start; settle from actual Tokens at end.**
 
 ---
 
@@ -488,7 +503,11 @@ The user is always in control of the wallet.
 
 ## 12. Credit
 
-Credit is Sealoo's lightweight usage quota.
+Credit is Sealoo's lightweight usage quota, using a **prepaid** model.
+
+**Token usage is estimated and accumulated on the client**, then converted to Credit for lock and settle.
+
+Full design: [Credit Prepaid Plan](./prepaid-credit.en.md)
 
 Example:
 
@@ -496,7 +515,32 @@ Example:
 100 Credit
 ```
 
-Single task:
+### Prepaid: Client Estimates Tokens → Lock Credit → Terminal Settle
+
+Search, read, summarize, and write inside a Task run off-chain. The client estimates Tokens before start, converts to `estimateCredit` and locks; accumulates `actualTokens` during the run; settles `actualCredit` on any terminal state and refunds the unused portion.
+
+```text
+User creates task
+  ↓
+[Client] estimateTokens → estimateCredit (e.g. 4800 Tokens → 5 Credit)
+  ↓
+[On-chain] lock(taskId, estimateCredit=5)
+  ↓
+[Off-chain] Agent runs; [Client] accumulates actualTokens
+  ↓
+[Client] actualTokens → actualCredit
+  ↓
+[On-chain] settle(taskId, actualCredit)
+```
+
+Rate:
+
+```text
+TOKENS_PER_CREDIT = 1000
+estimateCredit = ceil(estimateTokens / 1000)
+```
+
+Single-task breakdown (off-chain tally → actual):
 
 ```text
 Search       1
@@ -507,44 +551,50 @@ Write        1
 Total        5
 ```
 
-Result:
+Result (estimate=5, actual=5):
 
 ```text
 100 → 95
 ```
 
+| Step | Where | On-chain? |
+|------|-------|-----------|
+| Token estimate / tally | Client | No |
+| Token → Credit conversion | Client | No |
+| Tool call logs | Off-chain | No |
+| lock(estimateCredit) | On-chain | Yes (once at start) |
+| settle(actualCredit) | On-chain | Yes (once at end) |
+| Credit balance source of truth | Avalanche contract | Yes |
+
+> Demo note: Tokens are metered only on the client; the chain locks/settles Credit. Per-task Credit txs are lock + settle. Cancel still settles Tokens used so far — no free exit.
+
+### Insufficient Credit Policy
+
+Client estimates Tokens and converts to Credit first; if `available < estimateCredit`, **do not lock or run**.
+
+```text
+Receive task
+  ↓
+[Client] estimateTokenUsage → estimateCredit
+  ↓
+available ≥ estimateCredit ?
+  ├─ No  → Reject + Need Credit (no tools)
+  └─ Yes → lock → run + tally Tokens → settle(actualCredit)
+```
+
+| Case | Credit | Estimate | Behavior |
+|------|--------|----------|----------|
+| Enough | 100 | 5 | lock → run → settle |
+| Short | 3 | 5 | **Reject**; prompt to top up |
+| Exact | 5 | 5 | Allow; available becomes 0 after settle |
+
+Estimate: the client estimates Tokens from prompt length, planned tool rounds, expected output, etc., then converts to Credit.
+
 The Credit state is subject to the Avalanche Contract.
 
 ---
 
-## 13. Tamper Demo
-
-Sealoo local interface:
-
-```text
-Credit: 95
-```
-
-Modify local state:
-
-```text
-Credit: 9999
-```
-
-Re-read from Avalanche:
-
-```text
-Real Credit: 95
-```
-
-Demo Message:
-
-> **The UI can change.
-> The on-chain state remains real.**
-
----
-
-## 14. Ownership Demo
+## 13. Ownership Demo
 
 Connect Wallet:
 
@@ -570,44 +620,83 @@ Users can check this on the Explorer.
 
 ---
 
-## 15. Credit Demo
+## 14. Credit Demo
 
 Initial:
 
 ```text
-Credit: 100
+Credit: 100 (available)
 ```
 
 Execute task:
 
 ```text
 Research Avalanche
+Client estimate: estimateTokens ≈ 4800 → estimateCredit = 5
 ```
 
-Consumption:
+Prepaid lock → run → terminal settle:
 
 ```text
-5 Credit
-```
-
-On-chain:
-
-```text
-100 → 95
+lock(#001, 5)     100 → available 95 / locked 5
+settle(#001, 5)   locked 0 / available 95
 ```
 
 Explorer:
 
 ```text
-CreditConsumed
+CreditLocked
 TaskId: #001
-Amount: 5
+Estimate: 5
 Owner: 0xABC...123
+
+CreditSettled
+TaskId: #001
+Actual: 5
+Refund: 0
+Owner: 0xABC...123
+```
+
+### Verification Path
+
+Fixed TaskId mapping across lock / settle events:
+
+```text
+Task #1
+  ↓ Agent log: TaskId=#001, estimateTokens=4800, actualTokens=4800, Credit 5→5
+  ↓ Local UI: est 5 · actual 5 (100 → 95)
+  ↓ On-chain: lock(#001, 5) → settle(#001, 5)
+  ↓ Events: CreditLocked + CreditSettled
+  ↓ Explorer: [ View on Avalanche ] → public verification
+```
+
+| Field | Value | Purpose |
+|-------|-------|---------|
+| TaskId | `#001` | Primary key across Agent log and Event |
+| Estimate / Actual | `5` / `5` | Matches local UI |
+| Owner | Connected wallet | Ownership link |
+| Tx Hash | lock / settle tx hashes | Explorer deep link |
+
+Post-task UI:
+
+```text
+Task #001 · est 5 · actual 5 · refund 0
+[ View on-chain record ]
+```
+
+### Insufficient Credit Demo
+
+```text
+Credit: 3
+Task: “Help me research Avalanche and write a report”
+Estimate: 5
+Result: Do not lock or run
+Sealoo: “I need a little more Credit to keep going.”
 ```
 
 ---
 
-## 16. Desktop UI
+## 15. Desktop UI
 
 ## Home
 
@@ -642,6 +731,9 @@ Owner: 0xABC...123
 │ Searching...            │
 │ Reading...              │
 │ Done!                   │
+│                         │
+│ Task #001 · -5 Credit   │
+│ [ View on-chain record ]│
 └─────────────────────────┘
 ```
 
@@ -649,22 +741,43 @@ Owner: 0xABC...123
 
 ## Wallet
 
+Local display and on-chain truth must be distinguishable. The wallet view shows Network, Last synced, and transaction status.
+
 ```text
-┌─────────────────────────┐
-│ Avalanche Wallet        │
-│                         │
-│ 0xABC...123             │
-│                         │
-│ AVAX      2.31          │
-│ Credit    95            │
-│                         │
-│ [ View on Explorer ]    │
-└─────────────────────────┘
+┌─────────────────────────────┐
+│ Avalanche Wallet            │
+│ Network: Avalanche Fuji     │
+│                             │
+│ 0xABC...123                 │
+│                             │
+│ AVAX        2.31            │
+│ Credit      95              │
+│                             │
+│ Last synced: 2026-09-21     │
+│              16:08:12       │
+│                             │
+│ Status: Confirmed ✓         │
+│                             │
+│ [ View on Explorer ]        │
+│ [ Refresh ]                 │
+└─────────────────────────────┘
 ```
+
+Transaction status:
+
+| State | UI copy | Meaning |
+|-------|---------|---------|
+| idle | Confirmed ✓ | No in-flight transaction |
+| awaiting_wallet | Waiting for wallet confirmation... | Requested; awaiting user signature |
+| pending | Transaction pending... | Broadcast; awaiting inclusion |
+| confirmed | Confirmed ✓ | Receipt confirmed; local state overwritten from chain |
+| failed | Failed — tap to retry | Failed or rejected |
+
+Local Credit is a cache; `Last synced` and `Confirmed` show consistency with the chain.
 
 ---
 
-## 17. Sealoo Personality
+## 16. Sealoo Personality
 
 Sealoo's personality remains simple, friendly, and lighthearted.
 
@@ -691,6 +804,8 @@ Sealoo's personality remains simple, friendly, and lighthearted.
 
 ### Need Credit
 
+Triggered when Credit pre-check fails before the task starts (no tools called yet):
+
 ```text
 🦭
 "I need a little more Credit
@@ -706,7 +821,7 @@ to keep going."
 
 ---
 
-## 18. Main Hackathon Demo
+## 17. Main Hackathon Demo
 
 ## Scene 1
 
@@ -724,7 +839,7 @@ User:
 
 > "Help me research Avalanche and write a Markdown report."
 
-Sealoo:
+After pre-check passes (Credit ≥ estimate 5), Sealoo:
 
 ```text
 Thinking...
@@ -747,14 +862,28 @@ avalanche-report.md
 
 ## Scene 4
 
-Display:
+Display prepaid lock + settle:
 
 ```text
 Credit
 
-Before: 100
-Used:     5
-After:   95
+Before available: 100
+Locked estimate:    5
+Actual used:        5
+Refund:             0
+After available:   95
+TaskId: #001
+```
+
+---
+
+## Scene 4b · Insufficient Credit
+
+```text
+Credit: 3
+Estimate: 5
+→ Reject; do not call tools
+→ Need Credit prompt
 ```
 
 ---
@@ -767,7 +896,7 @@ Click:
 View on Avalanche
 ```
 
-Display real on-chain transaction.
+Follow Task #001 verification path: Agent log → lock → settle → Explorer.
 
 ---
 
@@ -776,24 +905,12 @@ Display real on-chain transaction.
 Open Wallet:
 
 ```text
+Network: Avalanche Fuji
 Sealoo #123
 Owner: 0xABC...123
-```
-
----
-
-## Scene 7
-
-Modify local Credit:
-
-```text
-9999
-```
-
-Re-read Contract:
-
-```text
-95
+Credit: 95
+Last synced: ...
+Status: Confirmed ✓
 ```
 
 ---
@@ -811,7 +928,7 @@ Avalanche underneath.
 
 ---
 
-## 19. MVP
+## 18. MVP
 
 ### Desktop
 
@@ -819,6 +936,7 @@ Avalanche underneath.
 - [x] Chat UI
 - [x] Simple animations
 - [x] Task status
+- [x] Wallet Network / Last synced / tx status
 
 ### AI
 
@@ -828,6 +946,9 @@ Avalanche underneath.
 - [x] Page Reading
 - [x] Summarization
 - [x] Markdown Generation
+- [x] Client Token estimate & accumulation
+- [x] Credit conversion & balance pre-check
+- [x] Off-chain tool metering & task aggregation
 
 ### Avalanche
 
@@ -835,20 +956,19 @@ Avalanche underneath.
 - [x] Sealoo Identity
 - [x] Agent NFT
 - [x] Credit Balance
-- [x] Credit Consumption
-- [x] Transaction Events
-- [x] Explorer Link
+- [x] Prepaid Credit lock + settle
+- [x] Transaction Events (with TaskId)
+- [x] Explorer Link (TaskId ↔ Tx verifiable)
 
 ### Security
 
 - [x] No Private Key Storage
 - [x] User Wallet Approval
 - [x] On-chain Credit State
-- [x] Local State Tamper Demo
 
 ---
 
-## 20. Tech Stack
+## 19. Tech Stack
 
 ```text
 Desktop
@@ -874,7 +994,7 @@ Contracts
 
 ---
 
-## 21. Repository
+## 20. Repository
 
 ```text
 sealoo/
@@ -902,7 +1022,7 @@ sealoo/
 
 ---
 
-## 22. Network
+## 21. Network
 
 Hackathon Demo:
 
@@ -920,13 +1040,13 @@ Chain ID: 43114
 
 ---
 
-## 23. Future
+## 22. Future
 
 More seal...
 
 ---
 
-## 24. Product Philosophy
+## 23. Product Philosophy
 
 ```text
 Simple UI
@@ -944,7 +1064,7 @@ Core Principle:
 
 ---
 
-## 25. Final Pitch
+## 24. Final Pitch
 
 ## Sealoo 🦭
 
@@ -974,7 +1094,7 @@ Sealoo turns Avalanche from something you visit into something that lives with y
 
 ---
 
-## 26. Final Definition
+## 25. Final Definition
 
 > **Sealoo is an AI desktop pet and an easy entry point to Avalanche.**
 >
