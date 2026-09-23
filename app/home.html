@@ -4,6 +4,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Sealoo</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      rel="stylesheet"
+    />
     <link rel="stylesheet" href="/src/home.css" />
     <script type="module" src="/src/home.ts" defer></script>
   </head>
@@ -19,7 +25,7 @@
       <main class="app" id="app">
         <section id="view-welcome" class="view" hidden>
           <p class="brand">Sealoo</p>
-          <p class="lead">
+          <p class="lead text-pretty">
             一只会帮你干活的海豹桌宠。先花一分钟完成初次设置，认识它的精力与鱼桶。
           </p>
           <div class="actions">
@@ -33,8 +39,8 @@
             <span class="step-dot"></span>
             <span class="step-dot"></span>
           </div>
-          <p class="brand brand-sm">给你的海豹起名</p>
-          <p class="lead">之后会显示在主界面里。随时可以改。</p>
+          <p class="brand brand-sm text-balance">给你的海豹起名</p>
+          <p class="lead text-pretty">之后会显示在主界面里。随时可以改。</p>
           <div class="field">
             <label for="pet-name">名字</label>
             <input
@@ -59,8 +65,8 @@
             <span class="step-dot" aria-current="step"></span>
             <span class="step-dot"></span>
           </div>
-          <p class="brand brand-sm">精力与鱼桶</p>
-          <p class="lead">干活会消耗精力；鱼桶就是补给来源。</p>
+          <p class="brand brand-sm text-balance">精力与鱼桶</p>
+          <p class="lead text-pretty">干活会消耗精力；鱼桶就是补给来源。</p>
           <div class="cards">
             <article class="card">
               <h3>精力</h3>
@@ -83,8 +89,8 @@
             <span class="step-dot"></span>
             <span class="step-dot" aria-current="step"></span>
           </div>
-          <p class="brand brand-sm">准备好了</p>
-          <p class="lead">
+          <p class="brand brand-sm text-balance">准备好了</p>
+          <p class="lead text-pretty">
             <strong id="done-name">Sealoo</strong> 已经在桌面上等你。右键它可以打开菜单。
           </p>
           <div class="actions">
@@ -94,12 +100,159 @@
         </section>
 
         <section id="view-home" class="view view-home" hidden>
-          <div class="home-head">
-            <h1 id="home-title">Sealoo</h1>
-            <p>主界面 · 更多能力正在路上</p>
+          <div class="hub">
+            <p class="brand brand-sm text-balance" id="home-title">Sealoo</p>
+            <p class="lead hub-greet text-pretty">
+              嗨！我是 <strong id="hub-name">Sealoo</strong>。
+            </p>
+            <div class="hub-stats" role="group" aria-label="状态">
+              <div class="hub-stat">
+                <span class="hub-stat-label">Credit</span>
+                <span class="hub-stat-value tabular" id="hub-credit">—</span>
+              </div>
+              <div class="hub-stat">
+                <span class="hub-stat-label">Wallet</span>
+                <span class="hub-stat-value" id="hub-wallet">未连接</span>
+              </div>
+            </div>
+            <div class="hub-actions">
+              <button type="button" class="btn btn-primary btn-block" data-go="chat">
+                开始聊天
+              </button>
+              <div class="hub-secondary">
+                <button type="button" class="btn btn-secondary" data-go="wallet">钱包详情</button>
+                <button type="button" class="btn btn-ghost" data-go="history">历史记录</button>
+              </div>
+            </div>
           </div>
-          <div class="home-panel">
-            <p>右键桌宠可打开菜单。消费、设置等入口会陆续接上。</p>
+        </section>
+
+        <section id="view-wallet" class="view view-pane" hidden>
+          <div class="pane-bar">
+            <button type="button" class="btn btn-ghost btn-back" data-go="home" aria-label="返回">
+              ←
+            </button>
+            <div class="pane-heading">
+              <h2 class="pane-title">Avalanche Wallet</h2>
+            </div>
+          </div>
+          <div class="home-panel wallet-panel">
+            <div class="wallet-hero">
+              <p class="wallet-addr tabular" id="w-address">未连接</p>
+              <p class="wallet-status" id="w-status">Confirmed</p>
+            </div>
+            <dl class="wallet-grid">
+              <div>
+                <dt>Network</dt>
+                <dd>Avalanche Fuji</dd>
+              </div>
+              <div>
+                <dt>AVAX</dt>
+                <dd class="tabular" id="w-avax">—</dd>
+              </div>
+              <div>
+                <dt>Credit</dt>
+                <dd class="tabular" id="w-credit">—</dd>
+              </div>
+              <div>
+                <dt>Agent</dt>
+                <dd id="w-agent">—</dd>
+              </div>
+              <div class="wallet-span">
+                <dt>Last synced</dt>
+                <dd id="w-synced">—</dd>
+              </div>
+            </dl>
+            <p id="w-msg" class="wallet-msg" hidden></p>
+            <div class="wallet-actions">
+              <button type="button" class="btn btn-primary" id="w-connect">连接钱包</button>
+              <button type="button" class="btn btn-secondary" id="w-mint" disabled>Mint 身份</button>
+              <button type="button" class="btn btn-secondary" id="w-feed" disabled>喂鱼 +100</button>
+              <button type="button" class="btn btn-ghost" id="w-refresh" disabled>刷新</button>
+              <button type="button" class="btn btn-ghost" id="w-recover" disabled>补结算</button>
+              <a
+                class="btn btn-ghost"
+                id="w-explorer"
+                href="https://testnet.snowtrace.io"
+                target="_blank"
+                rel="noreferrer"
+                >Explorer</a
+              >
+            </div>
+          </div>
+        </section>
+
+        <section id="view-chat" class="view view-pane view-chat" hidden>
+          <div class="pane-bar">
+            <button type="button" class="btn btn-ghost btn-back" data-go="home" aria-label="返回">
+              ←
+            </button>
+            <div class="pane-heading">
+              <h2 class="pane-title" id="chat-title">Sealoo</h2>
+            </div>
+          </div>
+          <div class="chat-body">
+            <p class="chat-hint text-pretty" id="chat-hint">有什么我可以帮你的吗？</p>
+            <p class="chat-user" id="chat-user" hidden></p>
+            <p class="chat-stage" id="chat-stage" aria-live="polite"></p>
+            <div class="chat-reply-wrap" id="chat-reply-wrap" hidden>
+              <p class="chat-reply text-pretty" id="chat-reply"></p>
+            </div>
+            <p class="chat-credit tabular" id="chat-credit" hidden></p>
+            <a class="chat-explorer" id="chat-explorer" hidden target="_blank" rel="noreferrer"
+              >链上记录</a
+            >
+          </div>
+          <form id="chat-form" class="chat-form" autocomplete="off">
+            <input
+              id="chat-input"
+              type="text"
+              maxlength="500"
+              placeholder="例如：研究 Avalanche 并写成 Markdown"
+              aria-label="聊天输入"
+            />
+            <button type="submit" class="btn btn-primary" id="chat-send">发送</button>
+            <button type="button" class="btn btn-ghost" id="chat-abort" hidden>中断</button>
+          </form>
+        </section>
+
+        <section id="view-history" class="view view-pane" hidden>
+          <div class="pane-bar">
+            <button type="button" class="btn btn-ghost btn-back" data-go="home" aria-label="返回">
+              ←
+            </button>
+            <div class="pane-heading">
+              <h2 class="pane-title">历史记录</h2>
+            </div>
+          </div>
+          <ul class="hist-list" id="hist-list"></ul>
+          <div class="hist-empty" id="hist-empty">
+            <p>还没有任务记录。</p>
+            <button type="button" class="btn btn-primary" data-go="chat">开始聊天</button>
+          </div>
+        </section>
+
+        <section id="view-settings" class="view view-pane" hidden>
+          <div class="pane-bar">
+            <button type="button" class="btn btn-ghost btn-back" data-go="home" aria-label="返回">
+              ←
+            </button>
+            <div class="pane-heading">
+              <h2 class="pane-title">设置</h2>
+            </div>
+          </div>
+          <div class="field settings-field">
+            <label for="settings-name">宠物名字</label>
+            <input
+              id="settings-name"
+              type="text"
+              maxlength="24"
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+          <div class="actions settings-actions">
+            <button type="button" class="btn btn-primary" id="settings-save">保存</button>
           </div>
         </section>
       </main>

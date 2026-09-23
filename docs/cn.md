@@ -216,26 +216,14 @@ Sealoo 身份由 Avalanche 链上进行记录。
 
 Sealoo 执行任务时使用简易 Credit（积分/额度）。
 
-示例：
+当前实现：客户端按模型返回的 Token 累计，再换算 Credit（`1000 Token = 1 Credit`，向上取整）。例如：
 
 ```text
-搜索         1
-阅读         1
-总结         2
-撰写         1
-
-总计         5 Credit
+Tokens ≈ 4800
+Credit = ceil(4800 / 1000) = 5
 ```
 
-任务完成后：
-
-```text
-100 Credit
-     ↓
-95 Credit
-```
-
-任务开始锁定预估、终态按实际结算；链上同步 CreditLocked / CreditSettled 事件（含 TaskId）。
+链上预付 `lock` / 终态 `settle`、余额预检与钱包扣减仍为规划，尚未接入。
 
 ---
 
@@ -279,42 +267,47 @@ Sealoo 使用轻量级的 Agent 运行环境（Agent Runtime）。
 ```text
 用户请求 (User Request)
      ↓
-理解意图 (Understand)
+模型决定：直接回答，或调用工具
      ↓
-规划步骤 (Plan)
+执行工具 → 结果回填 Messages
      ↓
-调用工具 (Tool)
-     ↓
-获得结果 (Result)
-     ↓
-生成回答 (Answer)
+（最多 100 轮）直到最终回答
 ```
+
+没有单独的「规划」结果；步骤由模型的 tool call 隐式完成。
 
 ### MVP 工具集
 
-#### Web（网络类）
+名称一律小写蛇形：动词，或动词_对象。
+
+#### 网络
 
 ```text
-search_web()
-fetch_page()
+search_web
+fetch_page
 ```
 
-#### File（文件类）
+#### 文件
 
 ```text
-write_file()
+read
+write
+edit
 ```
 
-#### Chat（对话类）
+#### 命令
 
 ```text
-answer()
-summarize()
+bash
 ```
+
+没有工具调用时，模型的最终回复就是回答；归纳写在这条回复里，不另注册工具。
 
 ---
 
 ## 7. Agent 任务示例
+
+> 目标体验示意。当前快捷栏按工具事件显示「搜索中 / 阅读中 / 写入中」等状态，不单独渲染步骤勾选列表。
 
 用户：
 
@@ -945,56 +938,57 @@ Status: Confirmed ✓
 
 - [x] 桌面宠物常驻 (Desktop Pet)
 
-- [x] 聊天 UI (Chat UI)
+- [x] 快捷栏对话 / 任务状态 (Quickbar)
 
 - [x] 基础动画交互 (Simple animations)
 
-- [x] 任务状态指示 (Task status)
+- [ ] 完整聊天 UI / 任务详情页
 
-- [x] 钱包 Network / Last synced / 交易状态展示
+- [ ] 钱包 Network / Last synced / 交易状态展示
 
 ### AI 层
 
-- [x] 智能对话 (Chat)
+- [x] 智能对话 (Chat，Tauri 拉起 Go Agent)
 
-- [x] 简易任务规划 (Simple planning)
+- [ ] 简易任务规划 (Simple planning，显式步骤列表)
 
-- [x] 网络搜索 (Web Search)
+- [x] 网络搜索 (Web Search → `search_web`)
 
-- [x] 网页阅读 (Page Reading)
+- [x] 网页阅读 (Page Reading → `fetch_page`)
 
-- [x] 内容总结 (Summarization)
+- [x] 内容总结 (写在最终回复里，无独立工具)
 
-- [x] Markdown 文件生成
+- [x] Markdown 文件生成 (`write` / `edit`)
 
-- [x] 客户端 Token 用量估算与累计
-- [x] 任务 Credit 换算与余额预检
+- [x] 客户端 Token 累计与 Credit 换算（`1000 Token = 1 Credit`）
 
-- [x] 工具调用链下计量与任务消耗汇总
+- [ ] 任务前余额预检与拒绝执行
+
+- [ ] 预估上限内停工具 / lock + settle
 
 ### Avalanche 链上
 
-- [x] 钱包连接 (Wallet Connection)
+- [ ] 钱包连接 (Wallet Connection)
 
-- [x] Sealoo 链上身份 (Sealoo Identity)
+- [ ] Sealoo 链上身份 (Sealoo Identity)
 
-- [x] Agent NFT 铸造
+- [ ] Agent NFT 铸造
 
-- [x] Credit 余额查询
+- [ ] Credit 余额查询
 
-- [x] Credit 预付锁定与终态结算（lock + settle）
+- [ ] Credit 预付锁定与终态结算（lock + settle）
 
-- [x] 链上 Event 事件抛出（含 TaskId）
+- [ ] 链上 Event 事件抛出（含 TaskId）
 
-- [x] 区块链浏览器跳转链接（TaskId ↔ Tx 可验证）
+- [ ] 区块链浏览器跳转链接（TaskId ↔ Tx 可验证）
 
 ### 安全性 (Security)
 
-- [x] 无私钥存储 (No Private Key Storage)
+- [ ] 无私钥存储 (No Private Key Storage)
 
-- [x] 交易由用户钱包授权
+- [ ] 交易由用户钱包授权
 
-- [x] 链上防篡改 Credit 状态
+- [ ] 链上防篡改 Credit 状态
 
 ---
 
@@ -1002,24 +996,19 @@ Status: Confirmed ✓
 
 ```text
 Desktop (桌面端)
-├── Electron / Tauri
-├── React
-└── TypeScript
+├── Tauri
+├── TypeScript
+└── Three.js
 
 AI Layer (AI 层)
-├── LLM API
-├── Agent Runtime
-└── Web Tools
+├── Go Agent Runtime
+├── OpenAI-compatible LLM API
+└── Tools: read · write · edit · bash · search_web · fetch_page
 
-Blockchain (区块链)
+Blockchain (规划中)
 ├── Avalanche C-Chain
 ├── Solidity
-├── Viem / Ethers
-└── WalletConnect / Avalanche Wallet
-
-Contracts (智能合约)
-├── AgentRegistry.sol
-└── WorkCredit.sol
+└── 钱包客户端（未接入）
 ```
 
 ---
@@ -1029,24 +1018,22 @@ Contracts (智能合约)
 ```text
 sealoo/
 │
-├── app/                  # 桌面客户端
-│   ├── ui/               # 界面 UI
-│   ├── pet/              # 宠物逻辑与动画
-│   └── wallet/           # 钱包连接模块
+├── app/                      # Tauri 桌面宠物
+│   ├── src/
+│   │   ├── main.ts           # 宠物窗口 + 快捷栏
+│   │   ├── quickbar.ts       # 任务快捷栏
+│   │   ├── home.ts           # 主页窗口
+│   │   └── movement/         # 动画 / 拖拽
+│   └── src-tauri/            # 拉起 Agent、偏好存储
 │
-├── agent/                # AI Agent 运行时
-│   ├── runtime/          # Agent 循环与逻辑
-│   ├── tools/            # 工具集 (搜索/文件等)
-│   └── chat/             # 对话管理
+├── agent/                    # Go Agent
+│   ├── main.go               # CLI：-prompt / -events
+│   └── runtime/              # 循环、工具、LLM 客户端
 │
-├── contracts/            # Solidity 智能合约
-│   ├── AgentRegistry.sol # 身份合约
-│   └── WorkCredit.sol    # 积分/额度合约
+├── model/                    # Blender 模型与导出
+│   └── ban/banv3.py
 │
-├── blockchain/           # 区块链交互
-│   ├── wallet/           # 钱包 Provider
-│   └── client/           # 合约客户端
-│
+├── docs/                     # 产品与预付费方案文档
 └── README.md
 ```
 

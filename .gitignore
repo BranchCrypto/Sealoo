@@ -11,6 +11,16 @@
 *.pem
 *.key
 
+# Agent binary (dev). Tauri falls back to `go run` when this is missing.
+agent/sealoo-agent
+agent/sealoo-agent.exe
+
+# Foundry
+web3/out/
+web3/cache/
+web3/broadcast/
+web3/.env
+
 # OS / editor
 .DS_Store
 Thumbs.db

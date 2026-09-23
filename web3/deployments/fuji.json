@@ -1,0 +1,7 @@
+{
+  "chainId": 43113,
+  "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
+  "explorerTx": "https://testnet.snowtrace.io/tx/",
+  "agentRegistry": "0x0000000000000000000000000000000000000000",
+  "workCredit": "0x0000000000000000000000000000000000000000"
+}

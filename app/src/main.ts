@@ -18,12 +18,17 @@ import {
   WebGLRenderer,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { emit } from "@tauri-apps/api/event";
 import { LogicalPosition } from "@tauri-apps/api/dpi";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
 import { bindDragBones, resetDragCamera } from "./movement/drag";
 import { setClips, update as updateMotion } from "./movement/router";
+import { invoke } from "@tauri-apps/api/core";
 import { isSetupComplete } from "./prefs";
+import { mountQuickbar, type AgentEvent } from "./quickbar";
+import { runUiPrepaidTask } from "./agentBridge";
+import { pushHistory } from "./web3";
 
 const MODEL_URL = "/models/pet.glb";
 const TURN_SENSITIVITY = 0.01;
@@ -87,6 +92,35 @@ const menuEl = document.querySelector<HTMLElement>("#ctx-menu");
 if (!menuEl) throw new Error("#ctx-menu missing");
 const menu = menuEl;
 
+const quickbar = mountQuickbar({
+  openDetails: () => {
+    void openHome("chat");
+  },
+  onChromeChange: (active) => {
+    if (!active) return;
+    root.classList.add("hit");
+    ignoringCursor = false;
+    void appWindow.setIgnoreCursorEvents(false).catch(() => {});
+  },
+  run(prompt, onEvent) {
+    return runUiPrepaidTask(prompt, (ev) => {
+      if (ev.type === "credit_settled" && ev.credit) {
+        const c = ev.credit;
+        pushHistory({
+          taskId: c.taskId,
+          prompt,
+          estimateCredit: c.estimate,
+          actualCredit: c.actual,
+          refund: c.refund,
+          explorerUrl: c.explorerUrl,
+          at: Date.now(),
+        });
+      }
+      onEvent(ev as AgentEvent);
+    });
+  },
+});
+
 function hitPetAtClient(clientX: number, clientY: number): boolean {
   if (!pet) return false;
   const rect = renderer.domElement.getBoundingClientRect();
@@ -112,7 +146,8 @@ async function syncClickThrough() {
     const w = size.width / factor;
     const h = size.height / factor;
     const inside = localX >= 0 && localY >= 0 && localX < w && localY < h;
-    const over = inside && hitPetAtClient(localX, localY);
+    const overUi = inside && quickbar.hitTest(localX, localY);
+    const over = inside && (overUi || hitPetAtClient(localX, localY));
     root.classList.toggle("hit", over);
     if (over === !ignoringCursor) return;
     ignoringCursor = !over;
@@ -146,12 +181,13 @@ function openMenu(clientX: number, clientY: number) {
   menu.style.top = `${y}px`;
 }
 
-async function openHome() {
+async function openHome(view: "home" | "wallet" | "chat" | "history" | "settings" = "home") {
   const home = await WebviewWindow.getByLabel("home");
   if (!home) return;
   await home.unminimize();
   await home.show();
   await home.setFocus();
+  await emit("sealoo-home-view", view);
 }
 
 async function maybeOpenFirstRun() {
@@ -285,21 +321,30 @@ function moveWindowDrag(e: PointerEvent) {
 
 function endWindowDrag(e: PointerEvent) {
   if (!pressPending && !dragging) return;
+  const wasClick = pressPending && !dragging;
   pressPending = false;
   dragging = false;
   grabReady = false;
   if (root.hasPointerCapture(e.pointerId)) {
     root.releasePointerCapture(e.pointerId);
   }
+  if (wasClick) {
+    if (quickbar.isBusy()) quickbar.focusStrip();
+    else quickbar.openPrompt();
+  }
 }
 
 root.addEventListener("pointerdown", (e) => {
   if (e.button !== 0) return;
+  if ((e.target as HTMLElement | null)?.closest("#quickbar, #ctx-menu")) return;
   if (menuOpen) {
     closeMenu();
     return;
   }
-  if (!hitPetAtClient(e.clientX, e.clientY)) return;
+  if (!hitPetAtClient(e.clientX, e.clientY)) {
+    if (quickbar.isChromeOpen() && !quickbar.isBusy()) quickbar.closePrompt();
+    return;
+  }
 
   if (e.altKey && pet) {
     turning = true;
@@ -347,8 +392,10 @@ menu.addEventListener("click", (e) => {
   if (!btn) return;
   const action = btn.getAttribute("data-action");
   closeMenu();
-  if (action === "home") void openHome();
-  // ponytail: consume/settings/quit still stubs until those screens exist.
+  if (action === "home") void openHome("home");
+  else if (action === "consume") void openHome("wallet");
+  else if (action === "settings") void openHome("settings");
+  else if (action === "quit") void invoke("quit_app");
 });
 
 window.addEventListener("pointerdown", (e) => {
@@ -358,7 +405,9 @@ window.addEventListener("pointerdown", (e) => {
 });
 
 window.addEventListener("keydown", (e) => {
-  if (e.key === "Escape") closeMenu();
+  if (e.key === "Escape") {
+    closeMenu();
+  }
 });
 
 window.addEventListener("resize", resize);

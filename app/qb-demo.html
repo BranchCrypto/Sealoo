@@ -2,19 +2,42 @@
 <html lang="zh-CN">
   <head>
     <meta charset="UTF-8" />
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-    <link
-      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
-      rel="stylesheet"
-    />
-    <link rel="stylesheet" href="/src/styles.css" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Sealoo</title>
-    <script type="module" src="/src/main.ts" defer></script>
+    <title>Sealoo Quickbar Demo</title>
+    <link rel="stylesheet" href="/src/styles.css" />
+    <style>
+      html,
+      body {
+        background:
+          radial-gradient(90% 70% at 50% 0%, #7eb6ff 0%, transparent 55%),
+          linear-gradient(180deg, #2a4a66 0%, #0d1824 100%);
+      }
+      #pet {
+        display: grid;
+        place-items: end center;
+        padding-bottom: 28px;
+      }
+      #pet-hit {
+        width: 140px;
+        height: 140px;
+        border-radius: 50% 50% 46% 46%;
+        background: linear-gradient(180deg, #9eb4c4, #5a6b76);
+        box-shadow: 0 18px 40px rgba(0, 0, 0, 0.35);
+        cursor: pointer;
+      }
+      .hint {
+        position: fixed;
+        left: 12px;
+        bottom: 12px;
+        color: rgba(255, 255, 255, 0.7);
+        font: 12px/1.4 "Segoe UI", "PingFang SC", sans-serif;
+      }
+    </style>
   </head>
   <body>
-    <div id="pet" aria-label="Sealoo"></div>
+    <div id="pet" aria-label="Sealoo">
+      <div id="pet-hit" title="单击海豹"></div>
+    </div>
 
     <div id="quickbar" class="qb" hidden>
       <form id="qb-prompt" class="qb-prompt qb-shell" autocomplete="off">
@@ -29,10 +52,7 @@
         />
         <button type="submit" class="qb-send" aria-label="发送">
           <svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true">
-            <path
-              d="M3 1.5 11 7 3 12.5V9l5-2-5-2V1.5Z"
-              fill="currentColor"
-            />
+            <path d="M3 1.5 11 7 3 12.5V9l5-2-5-2V1.5Z" fill="currentColor" />
           </svg>
         </button>
       </form>
@@ -41,7 +61,6 @@
         <section id="qb-card" class="qb-card" hidden>
           <p id="qb-prompt-line" class="qb-prompt-line"></p>
           <p id="qb-reply" class="qb-reply" hidden></p>
-          <p id="qb-chain" class="qb-chain" hidden></p>
           <div class="qb-row">
             <span id="qb-elapsed" class="qb-elapsed">0s</span>
             <button type="button" id="qb-details" class="qb-details">详情</button>
@@ -74,11 +93,7 @@
       </div>
     </div>
 
-    <nav id="ctx-menu" class="ctx-menu" hidden role="menu" aria-label="Sealoo 菜单">
-      <button type="button" role="menuitem" data-action="home">主界面</button>
-      <button type="button" role="menuitem" data-action="consume">消费</button>
-      <button type="button" role="menuitem" data-action="settings">设置</button>
-      <button type="button" role="menuitem" data-action="quit">退出</button>
-    </nav>
+    <p class="hint">单击海豹 → 输入任务；运行中再点 → 强调快捷栏。</p>
+    <script type="module" src="/src/qb-demo.ts"></script>
   </body>
 </html>

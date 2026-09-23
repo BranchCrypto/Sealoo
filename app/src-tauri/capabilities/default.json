@@ -18,6 +18,9 @@
     "core:window:allow-unminimize",
     "core:event:allow-listen",
     "allow-get-prefs",
-    "allow-set-prefs"
+    "allow-set-prefs",
+    "allow-agent-prompt",
+    "allow-agent-abort",
+    "allow-quit-app"
   ]
 }

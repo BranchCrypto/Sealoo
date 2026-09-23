@@ -204,26 +204,14 @@ The Sealoo Identity is recorded on the Avalanche chain.
 
 Sealoo consumes simple Credits when executing tasks.
 
-For example:
+Current implementation: the client tallies Tokens from the model, then converts to Credit (`1000 Tokens = 1 Credit`, rounded up). Example:
 
 ```text
-Search       1
-Read         1
-Summarize    2
-Write        1
-
-Total        5 Credit
+Tokens ≈ 4800
+Credit = ceil(4800 / 1000) = 5
 ```
 
-Task completed:
-
-```text
-100 Credit
-     ↓
-95 Credit
-```
-
-After lock + settle, Credit events (with TaskId) are recorded on-chain.
+On-chain prepaid `lock` / terminal `settle`, balance pre-check, and wallet debit are planned and not wired yet.
 
 ---
 
@@ -267,42 +255,47 @@ Sealoo uses a lightweight Agent Runtime.
 ```text
 User Request
      ↓
-Understand
+Model decides: answer, or call a tool
      ↓
-Plan
+Run tool → append result to Messages
      ↓
-Tool
-     ↓
-Result
-     ↓
-Answer
+(up to 100 turns) until a final answer
 ```
 
+There is no separate plan artifact; steps are implicit in the model's tool calls.
+
 ### MVP Tools
+
+Names are lowercase snake_case: a verb, or verb_object.
 
 #### Web
 
 ```text
-search_web()
-fetch_page()
+search_web
+fetch_page
 ```
 
 #### File
 
 ```text
-write_file()
+read
+write
+edit
 ```
 
-#### Chat
+#### Shell
 
 ```text
-answer()
-summarize()
+bash
 ```
+
+When the model makes no tool call, that final reply is the answer. Summaries go in the reply; there is no separate tool.
 
 ---
 
 ## 7. Example Agent Task
+
+> Target UX. The current quickbar shows live tool status (searching / reading / writing); it does not render a checklist of plan steps.
 
 User:
 
@@ -933,38 +926,38 @@ Avalanche underneath.
 ### Desktop
 
 - [x] Desktop Pet
-- [x] Chat UI
+- [x] Quickbar chat / task status
 - [x] Simple animations
-- [x] Task status
-- [x] Wallet Network / Last synced / tx status
+- [ ] Full chat UI / task details
+- [ ] Wallet Network / Last synced / tx status
 
 ### AI
 
-- [x] Chat
-- [x] Simple planning
-- [x] Web Search
-- [x] Page Reading
-- [x] Summarization
-- [x] Markdown Generation
-- [x] Client Token estimate & accumulation
-- [x] Credit conversion & balance pre-check
-- [x] Off-chain tool metering & task aggregation
+- [x] Chat (Tauri spawns Go Agent)
+- [ ] Simple planning (explicit step list)
+- [x] Web Search (`search_web`)
+- [x] Page Reading (`fetch_page`)
+- [x] Summarization (in the final reply; no separate tool)
+- [x] Markdown Generation (`write` / `edit`)
+- [x] Client Token tally & Credit conversion (`1000 Tokens = 1 Credit`)
+- [ ] Pre-task balance check / refuse to run
+- [ ] Cap tools at estimate / lock + settle
 
 ### Avalanche
 
-- [x] Wallet Connection
-- [x] Sealoo Identity
-- [x] Agent NFT
-- [x] Credit Balance
-- [x] Prepaid Credit lock + settle
-- [x] Transaction Events (with TaskId)
-- [x] Explorer Link (TaskId ↔ Tx verifiable)
+- [ ] Wallet Connection
+- [ ] Sealoo Identity
+- [ ] Agent NFT
+- [ ] Credit Balance
+- [ ] Prepaid Credit lock + settle
+- [ ] Transaction Events (with TaskId)
+- [ ] Explorer Link (TaskId ↔ Tx verifiable)
 
 ### Security
 
-- [x] No Private Key Storage
-- [x] User Wallet Approval
-- [x] On-chain Credit State
+- [ ] No Private Key Storage
+- [ ] User Wallet Approval
+- [ ] On-chain Credit State
 
 ---
 
@@ -972,24 +965,19 @@ Avalanche underneath.
 
 ```text
 Desktop
-├── Electron / Tauri
-├── React
-└── TypeScript
+├── Tauri
+├── TypeScript
+└── Three.js
 
 AI
-├── LLM API
-├── Agent Runtime
-└── Web Tools
+├── Go Agent Runtime
+├── OpenAI-compatible LLM API
+└── Tools: read · write · edit · bash · search_web · fetch_page
 
-Blockchain
+Blockchain (planned)
 ├── Avalanche C-Chain
 ├── Solidity
-├── Viem / Ethers
-└── WalletConnect / Avalanche Wallet
-
-Contracts
-├── AgentRegistry.sol
-└── WorkCredit.sol
+└── Wallet client (not wired)
 ```
 
 ---
@@ -999,24 +987,22 @@ Contracts
 ```text
 sealoo/
 │
-├── app/
-│   ├── ui/
-│   ├── pet/
-│   └── wallet/
+├── app/                      # Tauri desktop pet
+│   ├── src/
+│   │   ├── main.ts           # pet window + quickbar
+│   │   ├── quickbar.ts
+│   │   ├── home.ts
+│   │   └── movement/
+│   └── src-tauri/            # spawn Agent, prefs
 │
-├── agent/
-│   ├── runtime/
-│   ├── tools/
-│   └── chat/
+├── agent/                    # Go Agent
+│   ├── main.go               # CLI: -prompt / -events
+│   └── runtime/              # loop, tools, LLM client
 │
-├── contracts/
-│   ├── AgentRegistry.sol
-│   └── WorkCredit.sol
+├── model/                    # Blender model + export
+│   └── ban/banv3.py
 │
-├── blockchain/
-│   ├── wallet/
-│   └── client/
-│
+├── docs/
 └── README.md
 ```
 

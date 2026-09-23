@@ -7,3 +7,18 @@ commands.allow = ["get_prefs"]
 identifier = "allow-set-prefs"
 description = "Allows writing Sealoo prefs"
 commands.allow = ["set_prefs"]
+
+[[permission]]
+identifier = "allow-agent-prompt"
+description = "Allows running the Sealoo agent"
+commands.allow = ["agent_prompt"]
+
+[[permission]]
+identifier = "allow-agent-abort"
+description = "Allows stopping the Sealoo agent"
+commands.allow = ["agent_abort"]
+
+[[permission]]
+identifier = "allow-quit-app"
+description = "Allows exiting the Sealoo app"
+commands.allow = ["quit_app"]
