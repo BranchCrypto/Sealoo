@@ -1,4 +1,4 @@
-import type { Address, Hash, Hex } from "viem";
+import type { Hash, Hex } from "viem";
 import * as credit from "./credit";
 import { explorerTxUrl } from "./chain";
 import { contractsReady } from "./chain";
@@ -10,7 +10,7 @@ import {
   savePendingSettle,
   type PendingSettle,
 } from "./task";
-import { connect, getAccount, type TxStatus } from "./wallet";
+import { getAccount, type TxStatus } from "./wallet";
 
 export type TaskAgentEvent = {
   type: string;
@@ -79,8 +79,11 @@ export function runPrepaidTask(prompt: string, hooks: TaskRunHooks): TaskAgentRu
       throw new Error("合约尚未部署到 Fuji：请填写 fuji.json 地址后重试");
     }
 
-    let account: Address | null = await getAccount();
-    if (!account) account = await connect();
+    const account = await getAccount();
+    if (!account) {
+      hooks.onNeedCredit("请先连接钱包，再让 Sealoo 干活。");
+      return;
+    }
 
     if (loadPendingSettle()) {
       await recoverPendingSettle(hooks.onStatus);
@@ -93,7 +96,7 @@ export function runPrepaidTask(prompt: string, hooks: TaskRunHooks): TaskAgentRu
     const { credit: estCredit } = estimateCredit(prompt);
     const available = await credit.balanceOf(account);
     if (available < BigInt(estCredit)) {
-      hooks.onNeedCredit("需要补充一点 Credit 才能继续工作哦。");
+      hooks.onNeedCredit("额度不够，先去钱包喂鱼再继续。");
       return;
     }
 

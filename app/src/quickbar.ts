@@ -42,7 +42,7 @@ export type AgentRun = {
 };
 
 export type QuickbarHooks = {
-  openDetails: () => void;
+  openDetails: (view?: "chat" | "wallet") => void;
   /** Fired when interactive chrome appears/disappears (click-through). */
   onChromeChange: (active: boolean) => void;
   /** Live agent. Omit to play the timed demo. */
@@ -180,8 +180,8 @@ export function mountQuickbar(hooks: QuickbarHooks): Quickbar {
   function onAgentEvent(ev: AgentEvent) {
     if (ev.type === "need_credit") {
       settled = true;
-      setStatus("Need Credit", true);
-      setReply(ev.error || ev.message?.content || "需要补充一点 Credit 才能继续工作哦。");
+      hooks.openDetails("wallet");
+      resetIdle();
       return;
     }
     if (ev.type === "tx_status") {
@@ -336,7 +336,7 @@ export function mountQuickbar(hooks: QuickbarHooks): Quickbar {
   });
 
   detailsBtn.addEventListener("click", () => {
-    hooks.openDetails();
+    hooks.openDetails("chat");
     if (stage === "complete") resetIdle();
   });
 

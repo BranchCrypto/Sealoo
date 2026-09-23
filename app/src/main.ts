@@ -64,7 +64,7 @@ let turning = false;
 let lastPointerX = 0;
 
 /** Press past threshold, then move the window via setPosition. */
-const DRAG_THRESHOLD_PX = 5;
+const DRAG_THRESHOLD_PX = 12;
 let pressPending = false;
 let pressStartX = 0;
 let pressStartY = 0;
@@ -93,8 +93,8 @@ if (!menuEl) throw new Error("#ctx-menu missing");
 const menu = menuEl;
 
 const quickbar = mountQuickbar({
-  openDetails: () => {
-    void openHome("chat");
+  openDetails: (view) => {
+    void openHome(view ?? "chat");
   },
   onChromeChange: (active) => {
     if (!active) return;
@@ -393,7 +393,7 @@ menu.addEventListener("click", (e) => {
   const action = btn.getAttribute("data-action");
   closeMenu();
   if (action === "home") void openHome("home");
-  else if (action === "consume") void openHome("wallet");
+  else if (action === "wallet") void openHome("wallet");
   else if (action === "settings") void openHome("settings");
   else if (action === "quit") void invoke("quit_app");
 });

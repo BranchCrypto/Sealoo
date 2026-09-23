@@ -6,6 +6,8 @@ use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
 use std::sync::Mutex;
 use std::thread;
+use tauri::menu::{Menu, MenuItem};
+use tauri::tray::{MouseButton, MouseButtonState, TrayIconEvent};
 use tauri::{Emitter, Manager};
 
 struct AgentProc(Mutex<Option<std::process::Child>>);
@@ -226,6 +228,55 @@ fn quit_app(app: tauri::AppHandle) {
     app.exit(0);
 }
 
+fn show_window(app: &tauri::AppHandle, label: &str) {
+    if let Some(w) = app.get_webview_window(label) {
+        let _ = w.unminimize();
+        let _ = w.show();
+        let _ = w.set_focus();
+    }
+}
+
+fn toggle_pet(app: &tauri::AppHandle) {
+    if let Some(w) = app.get_webview_window("main") {
+        if w.is_visible().unwrap_or(false) {
+            let _ = w.hide();
+        } else {
+            show_window(app, "main");
+        }
+    }
+}
+
+fn install_tray(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let toggle = MenuItem::with_id(app, "toggle", "显示/隐藏", true, None::<&str>)?;
+    let home = MenuItem::with_id(app, "home", "主界面", true, None::<&str>)?;
+    let quit = MenuItem::with_id(app, "quit", "退出", true, None::<&str>)?;
+    let menu = Menu::with_items(app, &[&toggle, &home, &quit])?;
+    let Some(tray) = app.tray_by_id("tray") else {
+        return Ok(());
+    };
+    tray.set_menu(Some(menu))?;
+    tray.on_menu_event(|app, event| match event.id.as_ref() {
+        "toggle" => toggle_pet(app),
+        "home" => {
+            show_window(app, "home");
+            let _ = app.emit("sealoo-home-view", "home");
+        }
+        "quit" => app.exit(0),
+        _ => {}
+    });
+    tray.on_tray_icon_event(|tray, event| {
+        if let TrayIconEvent::Click {
+            button: MouseButton::Left,
+            button_state: MouseButtonState::Up,
+            ..
+        } = event
+        {
+            toggle_pet(tray.app_handle());
+        }
+    });
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -237,6 +288,10 @@ pub fn run() {
             agent_abort,
             quit_app
         ])
+        .setup(|app| {
+            install_tray(app)?;
+            Ok(())
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

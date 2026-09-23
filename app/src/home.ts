@@ -287,7 +287,9 @@ function showChatReply(text: string) {
 function onChatEvent(ev: UiAgentEvent) {
   if (ev.type === "need_credit") {
     chatStage.textContent = "Need Credit";
-    showChatReply(ev.error || "需要补充一点 Credit 才能继续工作哦。");
+    showChatReply(ev.error || "请先连接钱包或喂鱼。");
+    show("wallet");
+    setMsg(ev.error || "请先连接钱包或喂鱼。");
     return;
   }
   if (ev.type === "tx_status") {
