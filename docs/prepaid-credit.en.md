@@ -55,12 +55,13 @@ actualCredit   = ceil(actualTokens   / TOKENS_PER_CREDIT)
 
 | Asset | Holder | Role |
 |-------|--------|------|
-| LLM API Key | Developer backend / Agent runtime | Real model calls |
-| Token estimate & tally | Client | Pre-task estimate; in-run / post-run accumulation |
+| LLM API Key | LLM gateway only (`gateway/`) | Real model calls (DeepSeek / compatible) |
+| Token estimate | Client | Pre-task lock size |
+| Token tally | Gateway (upstream `usage`) | In-run metering and cap |
 | Credit | User (on-chain) | Prepaid quota to run Agent |
 | Fish bucket | User wallet | On-chain assets → Credit / feed |
 
-Users never receive or paste the LLM API Key.
+Users never receive or paste the LLM API Key. Gateway design: `docs/llm-gateway.en.md`.
 
 ---
 

@@ -34,7 +34,7 @@ func main() {
 		os.Exit(2)
 	}
 	if os.Getenv("OPENAI_API_KEY") == "" {
-		fmt.Fprintln(os.Stderr, "set OPENAI_API_KEY (OpenAI-compatible). optional: OPENAI_BASE_URL, OPENAI_MODEL")
+		fmt.Fprintln(os.Stderr, "set OPENAI_API_KEY to the Sealoo gateway ticket (not a model vendor key). optional: OPENAI_BASE_URL, OPENAI_MODEL")
 		os.Exit(1)
 	}
 

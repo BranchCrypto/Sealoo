@@ -8,6 +8,7 @@ import {
   type TaskAgentEvent,
   type TaskAgentRun,
   type TaskRunHooks,
+  type AgentGatewayAuth,
 } from "./web3";
 
 export type UiAgentEvent = TaskAgentEvent & {
@@ -24,11 +25,17 @@ export function runAgentViaTauri(
   prompt: string,
   maxCredit: number,
   onEvent: (ev: TaskAgentEvent) => void,
+  auth: AgentGatewayAuth,
 ): TaskAgentRun {
   let unlisten: UnlistenFn | undefined;
   const done = (async () => {
     unlisten = await listen<TaskAgentEvent>("agent-event", (e) => onEvent(e.payload));
-    await invoke("agent_prompt", { prompt, maxCredit });
+    await invoke("agent_prompt", {
+      prompt,
+      maxCredit,
+      gatewayUrl: auth.gatewayUrl,
+      ticket: auth.ticket,
+    });
   })();
   return {
     cancel() {

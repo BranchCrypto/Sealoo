@@ -498,9 +498,9 @@ The user is always in control of the wallet.
 
 Credit is Sealoo's lightweight usage quota, using a **prepaid** model.
 
-**Token usage is estimated and accumulated on the client**, then converted to Credit for lock and settle.
+**Token usage is estimated on the client for lock, then accumulated on the LLM gateway from model `usage`.**
 
-Full design: [Credit Prepaid Plan](./prepaid-credit.en.md)
+Full design: [Credit Prepaid Plan](./prepaid-credit.en.md), [LLM Token Gateway](./llm-gateway.en.md)
 
 Example:
 
@@ -519,7 +519,7 @@ User creates task
   ↓
 [On-chain] lock(taskId, estimateCredit=5)
   ↓
-[Off-chain] Agent runs; [Client] accumulates actualTokens
+[Off-chain] Agent calls the model via the LLM gateway; gateway accumulates actualTokens
   ↓
 [Client] actualTokens → actualCredit
   ↓
@@ -552,8 +552,9 @@ Result (estimate=5, actual=5):
 
 | Step | Where | On-chain? |
 |------|-------|-----------|
-| Token estimate / tally | Client | No |
-| Token → Credit conversion | Client | No |
+| Token estimate | Client | No |
+| Token tally | LLM gateway | No |
+| Token → Credit conversion | Gateway / client (same rate) | No |
 | Tool call logs | Off-chain | No |
 | lock(estimateCredit) | On-chain | Yes (once at start) |
 | settle(actualCredit) | On-chain | Yes (once at end) |

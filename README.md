@@ -50,6 +50,7 @@ Sealoo/
 ├── agent/               # Go agent runtime
 │   ├── main.go
 │   └── runtime/
+├── gateway/             # LLM Token gateway (DeepSeek key + Fuji Credit checks)
 ├── web3/                # Solidity + Foundry
 │   ├── src/             # AgentRegistry, WorkCredit
 │   ├── script/

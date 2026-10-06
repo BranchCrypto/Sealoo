@@ -510,9 +510,7 @@ Sealoo
 
 Credit 是 Sealoo 的轻量级使用额度，采用**预付费**模型。
 
-**Token 用量由客户端估算与累计**，再换算为 Credit 进行锁定与结算。
-
-详细方案见：[Credit 预付费方案](./prepaid-credit.cn.md)
+**Token 用量由 LLM 网关按模型 `usage` 累计**（客户端估算仅用于开任务前 lock）。详细方案见：[Credit 预付费方案](./prepaid-credit.cn.md)、[LLM Token 网关](./llm-gateway.cn.md)
 
 示例：
 
@@ -531,7 +529,7 @@ Credit 是 Sealoo 的轻量级使用额度，采用**预付费**模型。
   ↓
 [链上] lock(taskId, estimateCredit=5)
   ↓
-[链下] Agent 执行；[客户端] 累计 actualTokens
+[链下] Agent 经 LLM 网关调用模型；网关累计 actualTokens
   ↓
 [客户端] actualTokens → actualCredit
   ↓
@@ -564,8 +562,9 @@ estimateCredit = ceil(estimateTokens / 1000)
 
 | 环节 | 位置 | 是否上链 |
 |------|------|----------|
-| Token 用量估算 / 累计 | 客户端 | 否 |
-| Token → Credit 换算 | 客户端 | 否 |
+| Token 用量估算 | 客户端 | 否 |
+| Token 实际累计 | LLM 网关 | 否 |
+| Token → Credit 换算 | 网关 / 客户端（费率相同） | 否 |
 | 工具调用日志 | 链下 | 否 |
 | 锁定预估 lock | 链上 | 是（开始 1 次） |
 | 终态结算 settle | 链上 | 是（结束 1 次） |

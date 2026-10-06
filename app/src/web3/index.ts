@@ -38,4 +38,5 @@ export {
   type TaskAgentEvent,
   type TaskAgentRun,
   type TaskRunHooks,
+  type AgentGatewayAuth,
 } from "./runTask";

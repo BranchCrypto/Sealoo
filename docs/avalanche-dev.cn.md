@@ -1,7 +1,7 @@
 # AGENT: Avalanche / Fuji scope
 
 Audience: Cursor agents implementing Sealoo Web3. Not end-user docs.
-Canonical product/credit specs: `docs/cn.md`, `docs/prepaid-credit.cn.md`. Prefer those for API details; this file is constraints + wiring.
+Canonical product/credit specs: `docs/cn.md`, `docs/prepaid-credit.cn.md`, `docs/llm-gateway.cn.md`. Prefer those for API details; this file is constraints + wiring.
 
 ## Network (hard)
 
@@ -16,6 +16,7 @@ Canonical product/credit specs: `docs/cn.md`, `docs/prepaid-credit.cn.md`. Prefe
 
 - Desktop pet (Tauri + Three.js), quickbar, prefs, home setup
 - Go Agent: `read` `write` `edit` `bash` `search_web` `fetch_page`
+- LLM gateway (`gateway/`): DeepSeek key on server, Fuji `eth_call` Credit checks, OpenAI-compatible proxy
 - Client Token tally + `CreditFromTokens` (`TOKENS_PER_CREDIT = 1000`) in `agent/runtime`
 
 ## TODO (in scope)

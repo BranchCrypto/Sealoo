@@ -14,6 +14,8 @@
 # Agent binary (dev). Tauri falls back to `go run` when this is missing.
 agent/sealoo-agent
 agent/sealoo-agent.exe
+gateway/sealoo-gateway
+gateway/sealoo-gateway.exe
 
 # Foundry
 web3/out/
@@ -25,3 +27,4 @@ web3/.env
 .DS_Store
 Thumbs.db
 .idea/
+.codegraph/

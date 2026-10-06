@@ -133,10 +133,17 @@ fn agent_prompt(
     state: tauri::State<AgentProc>,
     prompt: String,
     max_credit: Option<u32>,
+    gateway_url: Option<String>,
+    ticket: Option<String>,
 ) -> Result<(), String> {
     let prompt = prompt.trim().to_string();
     if prompt.is_empty() {
         return Err("请输入内容".into());
+    }
+    let ticket = ticket.unwrap_or_default();
+    let gateway_url = gateway_url.unwrap_or_default();
+    if ticket.is_empty() || gateway_url.is_empty() {
+        return Err("缺少网关 ticket：请先 lock Credit 并由钱包签名取票".into());
     }
     let workspace = app
         .path()
@@ -146,6 +153,8 @@ fn agent_prompt(
     fs::create_dir_all(&workspace).map_err(|e| e.to_string())?;
 
     let mut cmd = agent_command()?;
+    cmd.env("OPENAI_BASE_URL", &gateway_url);
+    cmd.env("OPENAI_API_KEY", &ticket);
     cmd.arg("-events")
         .arg("-workspace")
         .arg(&workspace)

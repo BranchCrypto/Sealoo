@@ -6,6 +6,7 @@ export const FUJI_RPC = fuji.rpc as string;
 export const EXPLORER_TX = fuji.explorerTx as string;
 export const AGENT_REGISTRY = fuji.agentRegistry as `0x${string}`;
 export const WORK_CREDIT = fuji.workCredit as `0x${string}`;
+export const LLM_GATEWAY = String((fuji as { llmGateway?: string }).llmGateway ?? "");
 
 export const CORE_INSTALL = "https://build.avax.network/integrations";
 

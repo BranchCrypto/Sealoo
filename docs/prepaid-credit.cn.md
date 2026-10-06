@@ -54,12 +54,13 @@ actualCredit   = ceil(actualTokens   / TOKENS_PER_CREDIT)
 
 | 概念 | 谁持有 | 说明 |
 |------|--------|------|
-| LLM API Key | 开发者服务端 / Agent Runtime | 真正调用模型 |
-| Token 估算与累计 | 客户端 | 开任务前估算，运行中/结束后累计 |
+| LLM API Key | 仅 LLM 网关（`gateway/`） | 真正调用 DeepSeek / 兼容模型 |
+| Token 估算 | 客户端 | 开任务前估算 lock 额度 |
+| Token 累计 | 网关（上游 `usage`） | 运行中扣费与触顶停用 |
 | Credit | 用户（链上） | 使用 Agent 的预付额度 |
 | 鱼桶 | 用户钱包 | 用链上资产换 Credit / 喂鱼 |
 
-用户不持有也不填写 LLM API Key。
+用户不持有也不填写 LLM API Key。网关设计见 `docs/llm-gateway.cn.md`。
 
 ---
 
@@ -80,9 +81,9 @@ actualCredit   = ceil(actualTokens   / TOKENS_PER_CREDIT)
    locked   += estimateCredit
    emit CreditLocked(taskId, estimateCredit, owner)
 
-④ 链下执行 + 客户端累计实际 Token
-   Agent 搜索 / 阅读 / 总结 / 写入
-   actualTokens = client.accumulateTokenUsage(...)
+④ 链下执行 + 网关累计实际 Token
+   Agent 经网关搜索 / 阅读 / 总结 / 写入
+   actualTokens = gateway.accumulateTokenUsage(...)
    // actualCredit 不得超过 estimateCredit；触及上限则停工具并进入结算
 
 ⑤ 终态结算（成功 / 取消 / 失败 / 超时 均走此步）

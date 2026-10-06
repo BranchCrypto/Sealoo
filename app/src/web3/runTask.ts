@@ -11,6 +11,7 @@ import {
   type PendingSettle,
 } from "./task";
 import { getAccount, type TxStatus } from "./wallet";
+import { gatewayOpenAIBase, issueTicket, ticketUsage } from "./gateway";
 
 export type TaskAgentEvent = {
   type: string;
@@ -35,6 +36,11 @@ export type SettledInfo = {
   explorerUrl?: string;
 };
 
+export type AgentGatewayAuth = {
+  gatewayUrl: string;
+  ticket: string;
+};
+
 export type TaskRunHooks = {
   onEvent: (ev: TaskAgentEvent) => void;
   onStatus: (s: TxStatus) => void;
@@ -44,6 +50,7 @@ export type TaskRunHooks = {
     prompt: string,
     maxCredit: number,
     onEvent: (ev: TaskAgentEvent) => void,
+    auth: AgentGatewayAuth,
   ) => TaskAgentRun;
 };
 
@@ -110,25 +117,46 @@ export function runPrepaidTask(prompt: string, hooks: TaskRunHooks): TaskAgentRu
     };
     savePendingSettle(pendingRec);
 
-    const agent = hooks.runAgent(prompt, estCredit, (ev) => {
-      if (ev.usage?.total_tokens != null) {
-        if (ev.type === "agent_end") {
-          actualTokens = ev.usage.total_tokens;
-        } else if (ev.type === "message_end") {
-          actualTokens += ev.usage.total_tokens;
-        }
+    try {
+      hooks.onStatus("awaiting_wallet");
+      const ticket = await issueTicket(account, taskId);
+      const agent = hooks.runAgent(
+        prompt,
+        estCredit,
+        (ev) => {
+          if (ev.usage?.total_tokens != null) {
+            if (ev.type === "agent_end") {
+              actualTokens = ev.usage.total_tokens;
+            } else if (ev.type === "message_end") {
+              actualTokens += ev.usage.total_tokens;
+            }
+            pendingRec.actualTokens = actualTokens;
+            savePendingSettle(pendingRec);
+          }
+          hooks.onEvent(ev);
+        },
+        { gatewayUrl: gatewayOpenAIBase(), ticket },
+      );
+      agentCancel = agent.cancel;
+      try {
+        await agent.done;
+      } catch {
+        // still settle
+      }
+      agentCancel = null;
+      const billed = await ticketUsage(ticket);
+      if (billed != null) {
+        actualTokens = billed;
         pendingRec.actualTokens = actualTokens;
         savePendingSettle(pendingRec);
       }
-      hooks.onEvent(ev);
-    });
-    agentCancel = agent.cancel;
-    try {
-      await agent.done;
-    } catch {
-      // still settle
+    } catch (e) {
+      agentCancel = null;
+      hooks.onEvent({
+        type: "agent_end",
+        error: e instanceof Error ? e.message : String(e),
+      });
     }
-    agentCancel = null;
 
     const actual = actualCredit(actualTokens, estCredit);
     pendingRec.actualTokens = actualTokens;

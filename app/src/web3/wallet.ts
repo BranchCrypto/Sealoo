@@ -31,6 +31,11 @@ export function noWalletMessage(): string {
   return `未检测到钱包。请安装 Avalanche Core 或 MetaMask，并确保本窗口可访问注入的 provider。\n${CORE_INSTALL}`;
 }
 
+export async function signMessage(account: Address, message: string): Promise<Hex> {
+  const wc = walletClient();
+  return wc.signMessage({ account, message });
+}
+
 export const publicClient = createPublicClient({
   chain: avalancheFuji,
   transport: http(FUJI_RPC),

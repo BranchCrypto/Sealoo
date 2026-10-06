@@ -2,6 +2,7 @@
   "chainId": 43113,
   "rpc": "https://api.avax-test.network/ext/bc/C/rpc",
   "explorerTx": "https://testnet.snowtrace.io/tx/",
-  "agentRegistry": "0x0000000000000000000000000000000000000000",
-  "workCredit": "0x0000000000000000000000000000000000000000"
+  "agentRegistry": "0x4AdB5428af1b3e9c1697c1D61e330F996640C353",
+  "workCredit": "0x16c3F7F78e9dca9f8B5D475bE812E773f34C1F67",
+  "llmGateway": "http://127.0.0.1:8787"
 }
