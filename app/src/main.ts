@@ -18,7 +18,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { emit } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { LogicalPosition } from "@tauri-apps/api/dpi";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
 import { cursorPosition, getCurrentWindow } from "@tauri-apps/api/window";
@@ -190,9 +190,28 @@ async function openHome(view: "home" | "wallet" | "chat" | "history" | "settings
   await emit("sealoo-home-view", view);
 }
 
-async function maybeOpenFirstRun() {
-  if (await isSetupComplete()) return;
+let petRevealed = false;
+
+async function revealPet() {
+  if (petRevealed) {
+    await appWindow.show();
+    return;
+  }
+  petRevealed = true;
+  await loadPet();
+  await appWindow.show();
+}
+
+async function bootPet() {
+  if (await isSetupComplete()) {
+    await revealPet();
+    return;
+  }
+  await appWindow.hide();
   await openHome();
+  await listen("sealoo-setup-complete", () => {
+    void revealPet();
+  });
 }
 
 function fitCameraToObject(object: Object3D) {
@@ -413,6 +432,5 @@ window.addEventListener("keydown", (e) => {
 window.addEventListener("resize", resize);
 resize();
 void appWindow.setIgnoreCursorEvents(true).catch(() => {});
-void loadPet();
-void maybeOpenFirstRun();
+void bootPet();
 frame();

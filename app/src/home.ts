@@ -1,5 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 import { getPrefs, markSetupComplete, setPrefs } from "./prefs";
 import { runUiPrepaidTask, type UiAgentEvent } from "./agentBridge";
 import {
@@ -54,9 +54,9 @@ const views: Record<ViewId, HTMLElement> = {
   settings: must("#view-settings"),
 };
 const nameInput = must<HTMLInputElement>("#pet-name");
+const nextName = must<HTMLButtonElement>("#next-name");
 const doneName = must("#done-name");
 const homeTitle = must("#home-title");
-const hubName = must("#hub-name");
 const hubCredit = must("#hub-credit");
 const hubWallet = must("#hub-wallet");
 const finishBtn = must<HTMLButtonElement>("#finish-setup");
@@ -110,7 +110,15 @@ function must<T extends HTMLElement = HTMLElement>(sel: string): T {
 }
 
 function readName(): string {
-  return nameInput.value.trim() || "Sealoo";
+  return nameInput.value.trim();
+}
+
+function hasPetName(): boolean {
+  return readName().length > 0;
+}
+
+function syncNameNext() {
+  nextName.disabled = !hasPetName();
 }
 
 function isAppView(v: string): v is AppView {
@@ -127,7 +135,6 @@ function show(id: ViewId) {
   if (id === "done") doneName.textContent = petName;
   if (id === "home" || id === "wallet") {
     homeTitle.textContent = petName;
-    hubName.textContent = petName;
     chatTitle.textContent = petName;
     void refreshWallet();
   }
@@ -136,8 +143,8 @@ function show(id: ViewId) {
     if (!chatBusy) resetChatIdle();
   }
   if (id === "history") renderHistory();
-  if (id === "settings") settingsName.value = petName === "Sealoo" ? "" : petName;
-  if (id === "name" && !nameInput.value && petName !== "Sealoo") {
+  if (id === "settings") settingsName.value = petName;
+  if (id === "name" && !nameInput.value && petName) {
     nameInput.value = petName;
   }
 
@@ -146,19 +153,27 @@ function show(id: ViewId) {
   }
   current = id;
 
-  if (id === "name") requestAnimationFrame(() => nameInput.focus());
+  if (id === "name") {
+    syncNameNext();
+    requestAnimationFrame(() => nameInput.focus());
+  }
   if (id === "chat" && !chatBusy) requestAnimationFrame(() => chatInput.focus());
 }
 
 function go(id: ViewId) {
-  if (current === "name") petName = readName();
+  if (current === "name") {
+    if (id !== "welcome" && !hasPetName()) return;
+    if (hasPetName()) petName = readName();
+  }
   show(id);
 }
 
 async function finishSetup() {
-  petName = readName();
+  if (!hasPetName() && !petName) return;
+  petName = readName() || petName;
   await markSetupComplete(petName);
   setupDone = true;
+  await emit("sealoo-setup-complete");
   show("home");
   await win.hide();
 }
@@ -188,8 +203,10 @@ function statusLabel(s: TxStatus): string {
 }
 
 function onTxStatus(s: TxStatus) {
-  wStatus.textContent = statusLabel(s);
-  wStatus.dataset.state = s === "idle" ? "confirmed" : s;
+  const idle = s === "idle" || s === "confirmed";
+  wStatus.hidden = idle;
+  wStatus.textContent = idle ? "" : statusLabel(s);
+  wStatus.dataset.state = idle ? "" : s;
 }
 
 function shortAddr(a: string): string {
@@ -394,7 +411,7 @@ function renderHistory() {
       (r.refund ? ` · 退 ${r.refund}` : "") +
       `</p>` +
       (r.explorerUrl
-        ? `<a href="${r.explorerUrl}" target="_blank" rel="noreferrer">Explorer</a>`
+        ? `<a class="text-link" href="${r.explorerUrl}" target="_blank" rel="noreferrer">Explorer</a>`
         : "");
     histList.appendChild(li);
   }
@@ -489,10 +506,12 @@ finishBtn.addEventListener("click", () => {
   void finishSetup();
 });
 
+nameInput.addEventListener("input", syncNameNext);
+
 nameInput.addEventListener("keydown", (e) => {
   if (e.key === "Enter") {
     e.preventDefault();
-    go("about");
+    if (hasPetName()) go("about");
   }
 });
 

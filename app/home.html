@@ -7,7 +7,7 @@
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Source+Sans+3:wght@400;500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Source+Serif+4:opsz,wght@8..60,400;600;700&family=Source+Sans+3:wght@400;500;600&display=swap"
       rel="stylesheet"
     />
     <link rel="stylesheet" href="/src/home.css" />
@@ -23,23 +23,19 @@
       </header>
 
       <main class="app" id="app">
-        <section id="view-welcome" class="view" hidden>
+        <section id="view-welcome" class="view view-setup" hidden>
           <p class="brand">Sealoo</p>
           <p class="lead text-pretty">
-            一只会帮你干活的海豹桌宠。先花一分钟完成初次设置，认识它的精力与鱼桶。
+            一只会帮你干活的海豹桌宠。先花一分钟完成初次设置。
           </p>
           <div class="actions">
             <button type="button" class="btn btn-primary" data-go="name">开始设置</button>
           </div>
         </section>
 
-        <section id="view-name" class="view" hidden>
-          <div class="steps" aria-hidden="true">
-            <span class="step-dot" aria-current="step"></span>
-            <span class="step-dot"></span>
-            <span class="step-dot"></span>
-          </div>
-          <p class="brand brand-sm text-balance">给你的海豹起名</p>
+        <section id="view-name" class="view view-setup" hidden>
+          <p class="meta">1 / 3</p>
+          <h1 class="title text-balance">给你的海豹起名</h1>
           <p class="lead text-pretty">之后会显示在主界面里。随时可以改。</p>
           <div class="field">
             <label for="pet-name">名字</label>
@@ -51,45 +47,36 @@
               autocomplete="off"
               spellcheck="false"
             />
-            <p class="hint">留空则使用默认名 Sealoo。</p>
           </div>
           <div class="actions">
             <button type="button" class="btn btn-ghost" data-go="welcome">上一步</button>
-            <button type="button" class="btn btn-primary" data-go="about">下一步</button>
+            <button type="button" class="btn btn-primary" id="next-name" data-go="about" disabled>下一步</button>
           </div>
         </section>
 
-        <section id="view-about" class="view" hidden>
-          <div class="steps" aria-hidden="true">
-            <span class="step-dot"></span>
-            <span class="step-dot" aria-current="step"></span>
-            <span class="step-dot"></span>
-          </div>
-          <p class="brand brand-sm text-balance">精力与鱼桶</p>
-          <p class="lead text-pretty">干活会消耗精力；鱼桶就是补给来源。</p>
-          <div class="cards">
-            <article class="card">
-              <h3>精力</h3>
-              <p>Token 用量映射为精力。耗尽后需要喂鱼才能继续工作。</p>
-            </article>
-            <article class="card">
-              <h3>鱼桶</h3>
-              <p>鱼桶即链上钱包。买鱼与喂鱼都需要你确认；没连钱包或额度不够时会先打开钱包页。</p>
-            </article>
-          </div>
+        <section id="view-about" class="view view-setup" hidden>
+          <p class="meta">2 / 3</p>
+          <h1 class="title text-balance">精力与鱼桶</h1>
+          <p class="lead text-pretty">干活会花精力；鱼用来补充力气。</p>
+          <dl class="primer">
+            <div>
+              <dt>精力</dt>
+              <dd>帮你做事会消耗精力。没力气了，喂点鱼就能继续。</dd>
+            </div>
+            <div>
+              <dt>鱼桶</dt>
+              <dd>用来装鱼。需要时买鱼、喂鱼，都会先请你确认。</dd>
+            </div>
+          </dl>
           <div class="actions">
             <button type="button" class="btn btn-ghost" data-go="name">上一步</button>
             <button type="button" class="btn btn-primary" data-go="done">下一步</button>
           </div>
         </section>
 
-        <section id="view-done" class="view" hidden>
-          <div class="steps" aria-hidden="true">
-            <span class="step-dot"></span>
-            <span class="step-dot"></span>
-            <span class="step-dot" aria-current="step"></span>
-          </div>
-          <p class="brand brand-sm text-balance">准备好了</p>
+        <section id="view-done" class="view view-setup" hidden>
+          <p class="meta">3 / 3</p>
+          <h1 class="title text-balance">准备好了</h1>
           <p class="lead text-pretty">
             <strong id="done-name">Sealoo</strong> 已经在桌面上等你。右键它可以打开菜单。
           </p>
@@ -101,29 +88,20 @@
 
         <section id="view-home" class="view view-home" hidden>
           <div class="hub">
-            <p class="brand brand-sm text-balance" id="home-title">Sealoo</p>
-            <p class="lead hub-greet text-pretty">
-              嗨！我是 <strong id="hub-name">Sealoo</strong>。
+            <p class="brand brand-hub text-balance" id="home-title">Sealoo</p>
+            <p class="hub-meta" role="group" aria-label="状态">
+              <span>Credit <strong class="tabular" id="hub-credit">—</strong></span>
+              <span class="hub-meta-sep" aria-hidden="true">·</span>
+              <span>Wallet <strong id="hub-wallet">未连接</strong></span>
             </p>
-            <div class="hub-stats" role="group" aria-label="状态">
-              <div class="hub-stat">
-                <span class="hub-stat-label">Credit</span>
-                <span class="hub-stat-value tabular" id="hub-credit">—</span>
-              </div>
-              <div class="hub-stat">
-                <span class="hub-stat-label">Wallet</span>
-                <span class="hub-stat-value" id="hub-wallet">未连接</span>
-              </div>
-            </div>
-            <div class="hub-actions">
-              <button type="button" class="btn btn-primary btn-block" data-go="chat">
+            <nav class="hub-nav" aria-label="功能">
+              <button type="button" class="nav-link nav-link-primary" data-go="chat">
                 开始聊天
               </button>
-              <div class="hub-secondary">
-                <button type="button" class="btn btn-secondary" data-go="wallet">钱包详情</button>
-                <button type="button" class="btn btn-ghost" data-go="history">历史记录</button>
-              </div>
-            </div>
+              <button type="button" class="nav-link" data-go="wallet">钱包</button>
+              <button type="button" class="nav-link" data-go="history">历史记录</button>
+              <button type="button" class="nav-link" data-go="settings">设置</button>
+            </nav>
           </div>
         </section>
 
@@ -133,19 +111,15 @@
               ←
             </button>
             <div class="pane-heading">
-              <h2 class="pane-title">Avalanche Wallet</h2>
+              <h2 class="pane-title">钱包</h2>
             </div>
           </div>
           <div class="home-panel wallet-panel">
             <div class="wallet-hero">
               <p class="wallet-addr tabular" id="w-address">未连接</p>
-              <p class="wallet-status" id="w-status">Confirmed</p>
+              <p class="wallet-status" id="w-status" hidden></p>
             </div>
             <dl class="wallet-grid">
-              <div>
-                <dt>Network</dt>
-                <dd>Avalanche Fuji</dd>
-              </div>
               <div>
                 <dt>AVAX</dt>
                 <dd class="tabular" id="w-avax">—</dd>
@@ -166,12 +140,12 @@
             <p id="w-msg" class="wallet-msg" hidden></p>
             <div class="wallet-actions">
               <button type="button" class="btn btn-primary" id="w-connect">连接钱包</button>
-              <button type="button" class="btn btn-secondary" id="w-mint" disabled>Mint 身份</button>
-              <button type="button" class="btn btn-secondary" id="w-feed" disabled>喂鱼 +100</button>
+              <button type="button" class="btn btn-ghost" id="w-mint" disabled>Mint 身份</button>
+              <button type="button" class="btn btn-ghost" id="w-feed" disabled>喂鱼 +100</button>
               <button type="button" class="btn btn-ghost" id="w-refresh" disabled>刷新</button>
               <button type="button" class="btn btn-ghost" id="w-recover" disabled>补结算</button>
               <a
-                class="btn btn-ghost"
+                class="text-link"
                 id="w-explorer"
                 href="https://testnet.snowtrace.io"
                 target="_blank"
@@ -199,7 +173,7 @@
               <p class="chat-reply text-pretty" id="chat-reply"></p>
             </div>
             <p class="chat-credit tabular" id="chat-credit" hidden></p>
-            <a class="chat-explorer" id="chat-explorer" hidden target="_blank" rel="noreferrer"
+            <a class="text-link" id="chat-explorer" hidden target="_blank" rel="noreferrer"
               >链上记录</a
             >
           </div>

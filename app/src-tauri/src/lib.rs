@@ -246,6 +246,13 @@ fn show_window(app: &tauri::AppHandle, label: &str) {
 }
 
 fn toggle_pet(app: &tauri::AppHandle) {
+    let setup_done = read_prefs(app)
+        .map(|p| p.setup_complete)
+        .unwrap_or(false);
+    if !setup_done {
+        show_window(app, "home");
+        return;
+    }
     if let Some(w) = app.get_webview_window("main") {
         if w.is_visible().unwrap_or(false) {
             let _ = w.hide();

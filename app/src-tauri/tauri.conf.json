@@ -23,7 +23,8 @@
         "alwaysOnTop": true,
         "skipTaskbar": true,
         "shadow": false,
-        "center": true
+        "center": true,
+        "visible": false
       },
       {
         "label": "home",
